@@ -1,0 +1,240 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "id": "930461c5-eefb-42c4-80cd-8519d843d40b",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "tensor([0, 7, 1, 2, 5, 6, 4, 3])"
+      ]
+     },
+     "execution_count": 1,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "# ml_w_pytorch_ch16\n",
+    "\n",
+    "import torch\n",
+    "\n",
+    "sentence = torch.tensor(\n",
+    "    [0,\n",
+    "     7,\n",
+    "     1,\n",
+    "     2,\n",
+    "     5,\n",
+    "     6,\n",
+    "     4,\n",
+    "     3]\n",
+    ")\n",
+    "\n",
+    "sentence"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 14,
+   "id": "b7cd31ba-f7c4-46fa-86ea-166f7df5265c",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "torch.Size([8, 16])"
+      ]
+     },
+     "execution_count": 14,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "torch.manual_seed(123)\n",
+    "embed = torch.nn.Embedding(10,16)\n",
+    "embedded_sentence = embed(sentence).detach()\n",
+    "embedded_sentence.shape"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 17,
+   "id": "a9abe49c-6d2c-4f20-a0ce-e6ffd2687bfe",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "torch.Size([16])"
+      ]
+     },
+     "execution_count": 41,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "omega = torch.empty(8,8)\n",
+    "\n",
+    "for i, x_i in enumerate(embedded_sentence):\n",
+    "    for j, x_j in enumerate(embedded_sentence):\n",
+    "        omega[i, j] = torch.dot(x_i, x_j)\n",
+    "        \n",
+    "omega.shape"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 51,
+   "id": "6edb7e33-a7cc-4c06-a3f3-6a7d5a144721",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "tensor(True)"
+      ]
+     },
+     "execution_count": 51,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "omega_mat = embedded_sentence.matmul(embedded_sentence.T)\n",
+    "omega_mat.shape\n",
+    "(omega.T == omega).all()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 22,
+   "id": "38fc4f12-a301-4d2d-9530-9c9ba5ef7c50",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "True"
+      ]
+     },
+     "execution_count": 22,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "torch.allclose(omega_mat, omega)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 54,
+   "id": "8747ff92-f9bf-4ebb-8b5b-b97bb00c7faf",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "tensor([[ True, False, False, False, False, False, False, False],\n",
+       "        [False,  True, False, False, False, False, False, False],\n",
+       "        [False, False,  True, False, False, False, False, False],\n",
+       "        [False, False, False,  True, False, False, False, False],\n",
+       "        [False, False, False, False,  True, False, False, False],\n",
+       "        [False, False, False, False, False,  True, False, False],\n",
+       "        [False, False, False, False, False, False,  True, False],\n",
+       "        [False, False, False, False, False, False, False,  True]])"
+      ]
+     },
+     "execution_count": 54,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "import torch.nn.functional as F\n",
+    "\n",
+    "attention_weights = F.softmax(omega, dim=1)\n",
+    "attention_weights.shape\n",
+    "(attention_weights.T == attention_weights)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 31,
+   "id": "bdbc46ee-1126-49f9-b76a-c19d540d809b",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "tensor([0.9927, 0.9994, 1.0101, 0.9517, 0.9975, 1.0483, 1.0002, 1.0001])"
+      ]
+     },
+     "execution_count": 31,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "attention_weights.sum(dim=1)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 45,
+   "id": "6a331034-3d3a-4411-84c3-6acc3b5640ae",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "tensor([-9.3957e-01, -4.6770e-01,  1.0312e+00, -2.8293e-01,  4.9242e-01,\n",
+       "        -1.3848e-02, -2.7449e-01, -7.6353e-01,  1.3956e+00, -9.9441e-01,\n",
+       "        -1.3506e-03,  1.2455e+00, -7.6981e-02,  1.2768e+00, -1.4582e+00,\n",
+       "        -2.1575e+00])"
+      ]
+     },
+     "execution_count": 45,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "x_2 = embedded_sentence[1, :]\n",
+    "context_vec_2 = torch.zeros(x_2.shape)\n",
+    "\n",
+    "for j in range(8):\n",
+    "    x_j = embedded_sentence[j, :]\n",
+    "    context_vec_2 += attention_weights[1, j] * x_j\n",
+    "    \n",
+    "context_vec_2"
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "dlnightly",
+   "language": "python",
+   "name": "dlnightly"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.9.13"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}

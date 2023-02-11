@@ -1,0 +1,922 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "id": "7b155bb6-8d2b-4f50-8b5c-5b29378e49ab",
+   "metadata": {},
+   "source": [
+    "# Prepare Sentinel 1 & 2 data for ML model"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "b32ccedf-912c-4790-8660-a904501eb4dd",
+   "metadata": {},
+   "source": [
+    "The goal of this script is to prepare Sentinel 1 and 2 data for a pytorch tranformer model. The data will be saved in `.pt` format, first as raw data and second as normalized data ready to be imported."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "0b765bef-4724-4b6d-aae0-2232ec71f615",
+   "metadata": {},
+   "source": [
+    "First, load appropriate packages and functions."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "id": "6423268d-14f9-45d4-8308-2d0d09e2d413",
+   "metadata": {
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "import pandas as pd\n",
+    "import numpy as np\n",
+    "import os\n",
+    "import torch\n",
+    "from torch.utils.data import Dataset, DataLoader, WeightedRandomSampler\n",
+    "import re\n",
+    "import sys\n",
+    "from datetime import timedelta"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "d66d7530-5304-4535-b1e2-474f929869ed",
+   "metadata": {},
+   "source": [
+    "Prepare project paths to access the training data."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "id": "9ca4887b-b3b1-45e0-ba1e-efb35e002f64",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "proj_paths = [\"/Users/gopal/Google Drive/_Research/Research projects/ML/manclassify/app_data/Thailand\",\n",
+    "              \"/Users/gopalpenny/Library/CloudStorage/GoogleDrive-gopalpenny@gmail.com/My Drive/_Research/Research projects/ML/manclassify/app_data/Thailand\"]\n",
+    "\n",
+    "proj_path = [path for path in proj_paths if os.path.exists(path)][0]\n",
+    "\n",
+    "# ## Prep project path\n",
+    "proj_normpath = os.path.normpath(proj_path)\n",
+    "proj_dirname = proj_normpath.split(os.sep)[-1]\n",
+    "proj_name = re.sub(\"_classification$\",\"\",proj_dirname)\n",
+    "class_path = os.path.join(proj_path, proj_name + \"_classification\")\n",
+    "ts_path = os.path.join(proj_path, proj_name + \"_download_timeseries\")\n",
+    "data_path = \"data\""
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "e6ee6f62-18c1-4f78-9640-cf579b436dd8",
+   "metadata": {},
+   "source": [
+    "`class_colname` is the name of the column in pt_classes containing the classification data. "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "id": "719bf100-0b7c-4c67-bc2e-8bafab8b1a5a",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "class_colname = 'Subclass2019'"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "250315fd-c2af-42e2-b0b0-32551b075d89",
+   "metadata": {},
+   "source": [
+    "Read point classes data frame, and drop unused columns. Further, create a merged class column where \"Other\" is used for nonfarm classes"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "id": "c029b0de-8873-4e7a-82f0-ea8840e64a55",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>loc_id</th>\n",
+       "      <th>Class</th>\n",
+       "      <th>Subclass2019</th>\n",
+       "      <th>class</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>0</th>\n",
+       "      <td>0</td>\n",
+       "      <td>Farm</td>\n",
+       "      <td>Plantation</td>\n",
+       "      <td>Plantation</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>1</th>\n",
+       "      <td>1</td>\n",
+       "      <td>Farm</td>\n",
+       "      <td>Crop(Single)</td>\n",
+       "      <td>Crop(Single)</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2</th>\n",
+       "      <td>2</td>\n",
+       "      <td>Farm</td>\n",
+       "      <td>Crop(Single)</td>\n",
+       "      <td>Crop(Single)</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>3</th>\n",
+       "      <td>3</td>\n",
+       "      <td>Farm</td>\n",
+       "      <td>Crop(Single)</td>\n",
+       "      <td>Crop(Single)</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>4</th>\n",
+       "      <td>4</td>\n",
+       "      <td>Farm</td>\n",
+       "      <td>Plantation</td>\n",
+       "      <td>Plantation</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>...</th>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>496</th>\n",
+       "      <td>496</td>\n",
+       "      <td>Farm</td>\n",
+       "      <td>Crop(Single)</td>\n",
+       "      <td>Crop(Single)</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>497</th>\n",
+       "      <td>497</td>\n",
+       "      <td>Farm</td>\n",
+       "      <td>Crop(Single)</td>\n",
+       "      <td>Crop(Single)</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>498</th>\n",
+       "      <td>498</td>\n",
+       "      <td>Farm</td>\n",
+       "      <td>Plantation</td>\n",
+       "      <td>Plantation</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>499</th>\n",
+       "      <td>499</td>\n",
+       "      <td>Farm</td>\n",
+       "      <td>Plantation</td>\n",
+       "      <td>Plantation</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>500</th>\n",
+       "      <td>500</td>\n",
+       "      <td>Farm</td>\n",
+       "      <td>Crop(Double)</td>\n",
+       "      <td>Crop(Double)</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "<p>501 rows × 4 columns</p>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "     loc_id Class  Subclass2019         class\n",
+       "0         0  Farm    Plantation    Plantation\n",
+       "1         1  Farm  Crop(Single)  Crop(Single)\n",
+       "2         2  Farm  Crop(Single)  Crop(Single)\n",
+       "3         3  Farm  Crop(Single)  Crop(Single)\n",
+       "4         4  Farm    Plantation    Plantation\n",
+       "..      ...   ...           ...           ...\n",
+       "496     496  Farm  Crop(Single)  Crop(Single)\n",
+       "497     497  Farm  Crop(Single)  Crop(Single)\n",
+       "498     498  Farm    Plantation    Plantation\n",
+       "499     499  Farm    Plantation    Plantation\n",
+       "500     500  Farm  Crop(Double)  Crop(Double)\n",
+       "\n",
+       "[501 rows x 4 columns]"
+      ]
+     },
+     "execution_count": 4,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "pt_classes = pd.read_csv(os.path.join(class_path, \"location_classification.csv\"))\n",
+    "pt_classes = pt_classes[['loc_id', 'Class', class_colname]].dropna()\n",
+    "\n",
+    "# Create a merged class column where \"Other\" is used for nonfarm classes\n",
+    "pt_classes['class'] = ['Other' if x!='Farm' else y for x,y in zip(pt_classes['Class'],pt_classes['Subclass2019'])]\n",
+    "pt_classes"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "2f4b7a1a-34e6-4f94-9501-3434a93cdffe",
+   "metadata": {},
+   "source": [
+    "## Define functions to load original csv files\n",
+    "\n",
+    "Do so for both sentinel 1 and sentinel 2"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 5,
+   "id": "f656419e-c374-40df-bc83-bea4b191a0b3",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "date_range = pd.to_datetime(['2019-06-01','2020-05-31'])\n",
+    "\n",
+    "def prep_s2_loc(loc_id, date_range, proj_path):\n",
+    "    ts_path = os.path.join(proj_path,\"Thailand_download_timeseries\")\n",
+    "    s2_csv_name = f\"pt_ts_loc{loc_id}_s2.csv\"\n",
+    "    s2_csv_path = os.path.join(ts_path, s2_csv_name)\n",
+    "    s2_ts = pd.read_csv(s2_csv_path)\n",
+    "\n",
+    "    # extract dates from image ids\n",
+    "    s2_ts['datestr'] = [re.sub(\"(^[0-9]+)[a-zA-Z].*\",\"\\\\1\",x) for x in s2_ts.image_id]\n",
+    "    s2_ts['date'] = pd.to_datetime(s2_ts.datestr, format = \"%Y%m%d\")\n",
+    "\n",
+    "    # subset to cloud-free days AND within date_range\n",
+    "    s2_ts = s2_ts[(s2_ts.date >= date_range[0] - timedelta(days = 60)) & \n",
+    "                  (s2_ts.date <= date_range[1] + timedelta(days = 60)) & \n",
+    "                  (s2_ts.cloudmask == 0)]\n",
+    "\n",
+    "    # calculate day from startday\n",
+    "    date_diff = (s2_ts.date - date_range[0])\n",
+    "    s2_ts['day'] = [x.days for x in date_diff]\n",
+    "    s2_ts['loc_id'] = loc_id\n",
+    "\n",
+    "    # select only predictor and position columns, return tensor\n",
+    "    s2_ts_x = s2_ts[['loc_id','day','B8','B4','B3','B2']]\n",
+    "    return s2_ts_x\n",
+    "\n",
+    "\n",
+    "# %%\n",
+    "def prep_s1_loc(loc_id, date_range, proj_path):\n",
+    "    ts_path = os.path.join(proj_path,\"Thailand_download_timeseries\")\n",
+    "    \n",
+    "    s1_csv_name = f\"pt_ts_loc{loc_id}_s1.csv\"\n",
+    "    s1_csv_path = os.path.join(ts_path, s1_csv_name)\n",
+    "    s1_ts = pd.read_csv(s1_csv_path)\n",
+    "    \n",
+    "    # extract dates from image ids\n",
+    "    s1_ts['datestr'] = [re.sub(\".*_.*_.*_.*_([0-9]+)T[0-9]+_.*\",\"\\\\1\",x) for x in s1_ts.image_id]\n",
+    "    s1_ts['date'] = pd.to_datetime(s1_ts.datestr, format = \"%Y%m%d\")\n",
+    "        \n",
+    "    # subset to cloud-free days AND within date_range\n",
+    "    s1_ts = s1_ts[(s1_ts.date >= date_range[0] - timedelta(days = 60)) & \n",
+    "                  (s1_ts.date <= date_range[1] + timedelta(days = 60))]\n",
+    "    \n",
+    "    s1_ts = s1_ts[['date','HH','VV','VH','HV','angle']]\n",
+    "    \n",
+    "    # calculate day from startday\n",
+    "    date_diff = (s1_ts.date - date_range[0])\n",
+    "    s1_ts['day'] = [x.days for x in date_diff]\n",
+    "    s1_ts['loc_id'] = loc_id\n",
+    "    \n",
+    "    # select only predictor and position columns, return tensor\n",
+    "    s1_ts_x = s1_ts[['loc_id','day','HH','VV','VH','HV','angle']]\n",
+    "    \n",
+    "    return s1_ts_x"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "2dc7eab9-deba-4b5d-bfa5-2731c38fb9fb",
+   "metadata": {},
+   "source": [
+    "## Load Sentinel 1 and 2 data"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "id": "1a7d47ec-5641-4220-8688-d418deced9d6",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "72"
+      ]
+     },
+     "execution_count": 6,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "s1_orig_path = os.path.join(data_path, 's1_ts_prepped_orig.pt')\n",
+    "if os.path.exists(s1_orig_path):\n",
+    "    loc_s1_ts_tensor = torch.load(s1_orig_path)\n",
+    "    \n",
+    "else:\n",
+    "    # f = IntProgress(min=0, max=pt_classes.shape[0]) # instantiate the bar\n",
+    "    # display(f) # display the bar\n",
+    "    print(\"prepping s1 tensor file\")\n",
+    "    \n",
+    "    s1_ts_list = []\n",
+    "    loc_id_list = []\n",
+    "    for i in np.arange(pt_classes.shape[0]):\n",
+    "        print(\".\")\n",
+    "        # loc_id = 499\n",
+    "        # print(loc_id)\n",
+    "        loc_id = pt_classes.loc_id.iloc[i]\n",
+    "        \n",
+    "        s1_ts_loc = prep_s1_loc(loc_id, date_range, proj_path)\n",
+    "        s1_ts_loc = s1_ts_loc.groupby(['loc_id','day'],as_index = False).mean()\n",
+    "        s1_ts_tor = torch.tensor(s1_ts_loc.to_numpy())\n",
+    "        s1_ts_list.append(s1_ts_tor)\n",
+    "        \n",
+    "    loc_s1_ts_tensor = torch.cat(s1_ts_list)\n",
+    "    torch.save(loc_s1_ts_tensor, s1_orig_path)\n",
+    "    \n",
+    "\n",
+    "s2_orig_path = os.path.join(data_path, 's2_ts_prepped_orig.pt')\n",
+    "\n",
+    "if os.path.exists(s2_orig_path):\n",
+    "    loc_s2_ts_tensor = torch.load(s2_orig_path)\n",
+    "    \n",
+    "else:\n",
+    "    print(\"prepping s1 tensor file\")\n",
+    "    s2_ts_list = []\n",
+    "    loc_id_list = []\n",
+    "    for i in np.arange(pt_classes.shape[0]):\n",
+    "        # loc_id = 499\n",
+    "        print(\".\")\n",
+    "        loc_id = pt_classes.loc_id.iloc[i]\n",
+    "        # loc_id_list.append(loc_id)\n",
+    "        s2_ts_loc = prep_s2_loc(loc_id, date_range, proj_path)\n",
+    "        s2_ts_loc = s2_ts_loc.groupby(['loc_id','day'],as_index = False).mean()\n",
+    "        s2_ts_tor = torch.tensor(s2_ts_loc.to_numpy())\n",
+    "        s2_ts_list.append(s2_ts_tor)\n",
+    "        \n",
+    "    loc_s2_ts_tensor = torch.cat(s2_ts_list)\n",
+    "    torch.save(loc_s2_ts_tensor, s2_orig_path)\n",
+    "\n",
+    "sys.getsizeof(loc_s2_ts_tensor)\n",
+    "sys.getsizeof(loc_s1_ts_tensor)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "fbd23994-0fd2-42fd-b9cf-94951d257ce6",
+   "metadata": {},
+   "source": [
+    "## Limit number of observations\n",
+    "\n",
+    "Limit the number of observations for sentinel 1 and sentinel 2 to 64 in a given year. In other words, we can have at most 1 image every ~6 days."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "id": "11a54ca2-ccf3-44c9-81b3-a3478c4d778f",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "tensor([[   0.,   55., 4320.,  263.,  582.,  304.],\n",
+       "        [   0.,  120., 3896.,  472.,  785.,  560.],\n",
+       "        [   0.,  145., 3809.,  340.,  623.,  346.],\n",
+       "        ...,\n",
+       "        [ 500.,  348., 2590., 1245., 1153.,  844.],\n",
+       "        [ 500.,  363., 3241., 1605., 1565., 1281.],\n",
+       "        [ 500.,  368., 2692., 1226., 1187.,  898.]], dtype=torch.float64)"
+      ]
+     },
+     "execution_count": 7,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "def resample_nearest_days(tensor_orig, days_select, day_col):\n",
+    "    \"\"\"\n",
+    "    Select rows from tensor orig which are nearest to at least one of the values in days_select\n",
+    "    days_select : tensor\n",
+    "        Vector of evenly-spaced days used to select rows from tensor_orig\n",
+    "    tensor_orig: tensor\n",
+    "        2D tensor with 1 column being the time variable (i.e., days)\n",
+    "    day_col : numeric\n",
+    "        Colum index of tensor_orig containing time variable (days)\n",
+    "    \"\"\"\n",
+    "    days = tensor_orig[:, day_col]\n",
+    "    \n",
+    "    # tensor_orig\n",
+    "    days_mat = torch.unsqueeze(days, 0).repeat(len(days_select), 1) #.shape\n",
+    "    select_mat = days_select.unsqueeze(1).repeat(1, len(days)) #.shape\n",
+    "\n",
+    "    # days_mat #- select_mat\n",
+    "    nearest = torch.argmin(torch.abs(days_mat - select_mat), dim = 1)\n",
+    "    # torch.unsqueeze(torch.from_numpy(days_select),1)\n",
+    "    tensor_resampled = tensor_orig[torch.unique(nearest),:]\n",
+    "    \n",
+    "    return tensor_resampled\n",
+    "    \n",
+    "def resample_id_nearest_days(tensor_full, days_select, id_col, day_col):\n",
+    "    \"\"\"\n",
+    "    For each id in id_col, use resample_nearest_days to resample days to the closest to days_select\n",
+    "    \"\"\"\n",
+    "    ts_resampled = torch.zeros(0, tensor_full.shape[1])\n",
+    "    for loc_id in torch.unique(tensor_full[:, id_col]):\n",
+    "        # print(loc_id)\n",
+    "        tensor_orig = tensor_full[tensor_full[:, id_col] == loc_id]\n",
+    "        \n",
+    "        loc_resampled = resample_nearest_days(tensor_orig, days_select, day_col = 1)\n",
+    "        ts_resampled = torch.concat((ts_resampled, loc_resampled), dim = 0)#.shape\n",
+    "        \n",
+    "    return ts_resampled\n",
+    "\n",
+    "days_select = torch.arange(0, 370, 6)\n",
+    "s1_ts_resampled = resample_id_nearest_days(tensor_full = loc_s1_ts_tensor, \n",
+    "                                           days_select = days_select, \n",
+    "                                           id_col = 0, \n",
+    "                                           day_col = 1)\n",
+    "\n",
+    "s1_ts_resampled\n",
+    "\n",
+    "s2_ts_resampled = resample_id_nearest_days(tensor_full = loc_s2_ts_tensor, \n",
+    "                                           days_select = days_select, \n",
+    "                                           id_col = 0, \n",
+    "                                           day_col = 1)\n",
+    "\n",
+    "s2_ts_resampled"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "6c09e89c-d0f9-4a3f-ac24-20cc0c84b548",
+   "metadata": {},
+   "source": [
+    "## Normalize S1 data"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "id": "2ca00162-1d6a-4fb7-861f-681cd1f69cd1",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Normalized sentinel-1 data: torch.Size([29749, 7])\n",
+      "Columns: [loc_id, day_norm, HH, VV, HV, VV, angle]\n",
+      "tensor([[ 0.0000e+00,  2.4658e-02,  0.0000e+00,  ...,  6.9264e-02,\n",
+      "          0.0000e+00, -1.4274e-02],\n",
+      "        [ 0.0000e+00,  5.7534e-02,  0.0000e+00,  ...,  1.0661e+00,\n",
+      "          0.0000e+00, -1.4248e-02],\n",
+      "        [ 0.0000e+00,  9.0411e-02,  0.0000e+00,  ...,  1.1190e+00,\n",
+      "          0.0000e+00, -1.4197e-02],\n",
+      "        ...,\n",
+      "        [ 5.0000e+02,  9.6438e-01,  0.0000e+00,  ..., -2.8720e-01,\n",
+      "          0.0000e+00,  2.3965e-02],\n",
+      "        [ 5.0000e+02,  9.9178e-01,  0.0000e+00,  ..., -6.9950e-02,\n",
+      "          0.0000e+00,  5.7148e-02],\n",
+      "        [ 5.0000e+02,  9.9726e-01,  0.0000e+00,  ...,  3.1836e-01,\n",
+      "          0.0000e+00,  2.3966e-02]], dtype=torch.float64)\n"
+     ]
+    }
+   ],
+   "source": [
+    "# %% Normalize s1 tensor\n",
+    "s1_ts_resampled = s1_ts_resampled[(s1_ts_resampled[:,1] >= 0) & (s1_ts_resampled[:,1] <= 365)]\n",
+    "\n",
+    "s1_ts_resampled[torch.isnan(s1_ts_resampled)] = 0\n",
+    "\n",
+    "s1_col_means= s1_ts_resampled.mean(dim = 0)#.shape #.unsqueeze(0).repeat(5,1)\n",
+    "s1_col_std= s1_ts_resampled.std(dim = 0)#.shape #.unsqueeze(0).repeat(5,1)\n",
+    "s1_col_means[[0,1]] = 0\n",
+    "s1_col_std[[0]] = 1\n",
+    "s1_col_std[s1_col_std==0] = 1\n",
+    "s1_col_std[[1]] = 365 # normalize days by 365 -- each year ranges from 0 to 1\n",
+    "s1_col_std[[-1]] = 90 # normalize angle by 90 -- angle ranges from 0 to 1\n",
+    "\n",
+    "s1_norms = {'s1_col_std' : s1_col_std,\n",
+    "            's1_col_means' : s1_col_means}\n",
+    "\n",
+    "s1_ts_resampled_std = s1_col_std.unsqueeze(0).repeat(s1_ts_resampled.shape[0],1)\n",
+    "s1_ts_resampled_mean = s1_col_means.unsqueeze(0).repeat(s1_ts_resampled.shape[0],1)\n",
+    "\n",
+    "loc_s1_ts_norm = (s1_ts_resampled - s1_ts_resampled_mean) / s1_ts_resampled_std\n",
+    "print(\"Normalized sentinel-1 data:\", loc_s1_ts_norm.shape)\n",
+    "print(\"Columns: [loc_id, day_norm, HH, VV, HV, VV, angle]\")\n",
+    "print(loc_s1_ts_norm)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "ce69d6d9-c212-4c84-97d1-8693a57ed9f9",
+   "metadata": {},
+   "source": [
+    "In the above data, the colums refer to:\n",
+    "\n",
+    "* loc_id: id of point location\n",
+    "* day_norm: (day since June 1) / 365\n",
+    "* HH, VV, HV, VV: standard normalization\n",
+    "* angle: (deg angle) / 90\n",
+    "\n",
+    "Below shows the maximum number of observations for each location"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 9,
+   "id": "a8db0178-90e9-4f6f-8549-34220d4172a4",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Sentinel 1:\n",
+      "Median number of observations across loc_id's: 61.0\n",
+      "Median number of observations across loc_id's 59.37924151696607\n",
+      "Max number of observations is 62 for loc_id 1\n"
+     ]
+    }
+   ],
+   "source": [
+    "# get max of number of observations per location\n",
+    "# idx = np.arange(loc_ts_norm.shape[0])\n",
+    "loc_id = np.unique(loc_s1_ts_norm[:,0])\n",
+    "num_obs = pd.DataFrame({'loc_id' : np.unique(loc_s1_ts_norm[:,0]).astype('int')})\n",
+    "\n",
+    "num_obs['num_obs'] = [loc_s1_ts_norm[loc_s1_ts_norm[:,0]==i,:].shape[0] for i in num_obs['loc_id']]\n",
+    "print(\"Sentinel 1:\")\n",
+    "print(\"Median number of observations across loc_id's:\", num_obs.num_obs.median())\n",
+    "print(\"Median number of observations across loc_id's\", num_obs.num_obs.mean())\n",
+    "max_obs = num_obs.iloc[[num_obs['num_obs'].idxmax()]]\n",
+    "print(f\"Max number of observations is {max_obs.num_obs.item()} for loc_id {max_obs.loc_id.item()}\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 10,
+   "id": "00646731-709b-4b3b-af90-d2be8130478e",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "torch.Size([61, 7])"
+      ]
+     },
+     "execution_count": 10,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "s1_ts_resampled[s1_ts_resampled[:,0] == 43].shape"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 11,
+   "id": "61a77c29-1060-4df5-b43e-ad6b3e6884ba",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Sentinel 2:\n",
+      "Median number of observations across loc_id's: 34.0\n",
+      "Median number of observations across loc_id's 33.125748502994014\n",
+      "Max number of observations is 51 for loc_id 96\n"
+     ]
+    }
+   ],
+   "source": [
+    "# %% Normalize s2 tensor\n",
+    "s2_ts_resampled = s2_ts_resampled[(s2_ts_resampled[:,1] >= 0) & (s2_ts_resampled[:,1] <= 365)]\n",
+    "\n",
+    "row_means= s2_ts_resampled.mean(dim = 1)#.shape #.unsqueeze(0).repeat(5,1)\n",
+    "s2_ts_resampled = s2_ts_resampled[~torch.isnan(row_means)]\n",
+    "s2_col_means= s2_ts_resampled.mean(dim = 0)#.shape #.unsqueeze(0).repeat(5,1)\n",
+    "s2_col_std= s2_ts_resampled.std(dim = 0)#.shape #.unsqueeze(0).repeat(5,1)\n",
+    "s2_col_means[[0,1]] = 0\n",
+    "s2_col_std[[0]] = 1\n",
+    "s2_col_std[[1]] = 365 # normalize days by 365 -- each year ranges from 0 to 1\n",
+    "\n",
+    "s2_ts_resampled_std = s2_col_std.unsqueeze(0).repeat(s2_ts_resampled.shape[0],1)\n",
+    "s2_ts_resampled_mean = s2_col_means.unsqueeze(0).repeat(s2_ts_resampled.shape[0],1)\n",
+    "\n",
+    "loc_s2_ts_norm = (s2_ts_resampled - s2_ts_resampled_mean) / s2_ts_resampled_std\n",
+    "\n",
+    "# get max of number of observations per location\n",
+    "# idx = np.arange(loc_ts_norm.shape[0])\n",
+    "loc_id = np.unique(loc_s2_ts_norm[:,0])\n",
+    "num_obs = pd.DataFrame({'loc_id' : np.unique(loc_s2_ts_norm[:,0]).astype('int')})\n",
+    "num_obs['num_obs'] = [loc_s2_ts_norm[loc_s2_ts_norm[:,0]==i,:].shape[0] for i in num_obs['loc_id']]\n",
+    "print(\"Sentinel 2:\")\n",
+    "print(\"Median number of observations across loc_id's:\", num_obs.num_obs.median())\n",
+    "print(\"Median number of observations across loc_id's\", num_obs.num_obs.mean())\n",
+    "max_obs = num_obs.iloc[[num_obs['num_obs'].idxmax()]]\n",
+    "print(f\"Max number of observations is {max_obs.num_obs.item()} for loc_id {max_obs.loc_id.item()}\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "8bf1ee7f-324e-43c4-9484-3b6555e4b046",
+   "metadata": {},
+   "source": [
+    "## Save the model-ready data"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "3dcd85d4-caa5-44f3-8344-e1aae5b97a2a",
+   "metadata": {},
+   "source": [
+    "The model-ready data is saved as `model_data_s1.pt`, `model_data_s1.pt`, and `model_data_norms.pt`. The first two contain data that is prepared for the torch model. The last one contains the normalization constants for s1 and s2 data.  "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 12,
+   "id": "ecb50437-4b94-466f-bc64-679a497f533d",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "norms = {'s1_col_std' : s1_col_std,\n",
+    "         's1_col_means' : s1_col_means,\n",
+    "         's2_col_std' : s2_col_std,\n",
+    "         's2_col_means' : s2_col_means}\n",
+    "# norms\n",
+    "torch.save(norms, os.path.join(data_path, 'model_data_norms.pt'))\n",
+    "torch.save(loc_s1_ts_norm, os.path.join(data_path, 'model_data_s1.pt'))\n",
+    "torch.save(loc_s2_ts_norm, os.path.join(data_path, 'model_data_s2.pt'))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "9e30fbe0-001f-41b7-b92d-2ef0be0cb866",
+   "metadata": {},
+   "source": [
+    "## Prepare class (target) data"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 13,
+   "id": "1b50b380-68be-4cf4-9fce-d4a0cb29a68c",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "tensor([[1, 0],\n",
+       "        [2, 0],\n",
+       "        [3, 0],\n",
+       "        [4, 2],\n",
+       "        [5, 1],\n",
+       "        [6, 3],\n",
+       "        [7, 2],\n",
+       "        [8, 3],\n",
+       "        [9, 0]])"
+      ]
+     },
+     "execution_count": 13,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "# print('All classes')\n",
+    "# print(pt_classes.groupby(['Class','Subclass2019','class']).count())\n",
+    "\n",
+    "train_categories = ['Crop(Single)','Crop(Double)','Plantation', 'Other']\n",
+    "train_classes = [0, 1, 2, 3]\n",
+    "\n",
+    "classes_df = pd.DataFrame({'class' : train_categories,\n",
+    "              'class_num' : train_classes})\n",
+    "\n",
+    "pt_classes_df = pt_classes[pt_classes['class'].isin(classes_df['class'])][['class','loc_id']]\n",
+    "pt_classes_df2 = pd.merge(pt_classes_df, classes_df, on = 'class').sort_values('loc_id')\n",
+    "# \n",
+    "# torch.from_pandas(pt_classes_df2[['loc_id','class_num']])\n",
+    "model_data_labels = torch.tensor(pt_classes_df2[['loc_id','class_num']].values)\n",
+    "\n",
+    "model_data_labels[1:10, :]"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "985d5001-8127-4c21-bb93-d1f8be802beb",
+   "metadata": {},
+   "source": [
+    "## Save class / target data\n",
+    "\n",
+    "The class data contains 2 columns, the first for `loc_id` and the second for the `class_num`. Note that the s1 and s2 datasets have more locations than `model_data_labels.pt`. That is okay, the `model_data_labels.pt` dataset is the master and some loc_id in the s1 and s2 datasets are not needed (e.g., could not clearly identify the class from the app)."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 14,
+   "id": "134d15a4-0ff7-4a1c-bf00-6774a06415c4",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "torch.save(model_data_labels, os.path.join(data_path, 'model_data_labels.pt'))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 15,
+   "id": "8d15cf98-38b9-4db2-b835-edd3c5fc30d9",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "{'s1_col_std': tensor([  1.0000, 365.0000,   1.0000,   3.4645,   4.1846,   1.0000,  90.0000],\n",
+       "        dtype=torch.float64),\n",
+       " 's1_col_means': tensor([  0.0000,   0.0000,   0.0000, -10.6189, -18.0191,   0.0000,  37.6008],\n",
+       "        dtype=torch.float64),\n",
+       " 's2_col_std': tensor([  1.0000, 365.0000, 712.1756, 604.6329, 361.9943, 342.0948],\n",
+       "        dtype=torch.float64),\n",
+       " 's2_col_means': tensor([   0.0000,    0.0000, 2831.9051, 1125.1194, 1026.9053,  749.2618],\n",
+       "        dtype=torch.float64)}"
+      ]
+     },
+     "execution_count": 15,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "norms_load = torch.load(os.path.join(data_path, 'model_data_norms.pt'))\n",
+    "norms_load"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "8ea36610-b803-4d7b-a548-c5aa9efcff0a",
+   "metadata": {},
+   "source": [
+    "## Exploratory class analysis"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 16,
+   "id": "fc475250-27d4-4f80-99ad-05d6e7a0a3ca",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "All classes\n",
+      "                                     loc_id\n",
+      "Class     Subclass2019 class               \n",
+      "Farm      Crop(Double) Crop(Double)      68\n",
+      "          Crop(Single) Crop(Single)     278\n",
+      "          Mixed        Mixed              2\n",
+      "          Plantation   Plantation       109\n",
+      "          Unsure       Unsure             4\n",
+      "NonFarm   Forest       Other              3\n",
+      "          Golf         Other              1\n",
+      "          Mixed        Other              4\n",
+      "          Unsure       Other              1\n",
+      "          Urban        Other              1\n",
+      "Uncertain Mixed        Other              9\n",
+      "          Unsure       Other             12\n",
+      "Water     Mixed        Other              5\n",
+      "          Water        Other              4\n",
+      "\n",
+      "Final classes\n",
+      "              loc_id  class_num\n",
+      "class                          \n",
+      "Crop(Double)      68         68\n",
+      "Crop(Single)     278        278\n",
+      "Other             40         40\n",
+      "Plantation       109        109\n"
+     ]
+    }
+   ],
+   "source": [
+    "print('All classes')\n",
+    "\n",
+    "pt_classes_df2\n",
+    "print(pt_classes.groupby(['Class','Subclass2019','class']).count())\n",
+    "\n",
+    "print('\\nFinal classes')\n",
+    "print(pt_classes_df2.groupby(['class']).count())"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 17,
+   "id": "f4d801df-ea7d-43f6-8f81-530663201366",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Training (loc_train summary)\n",
+      "               loc_id  class_num\n",
+      "class                          \n",
+      "Crop(Double)      54         54\n",
+      "Crop(Single)     222        222\n",
+      "Other             32         32\n",
+      "Plantation        87         87\n",
+      "\n",
+      "Validate (loc_test summary)\n",
+      "               loc_id  class_num\n",
+      "class                          \n",
+      "Crop(Double)       7          7\n",
+      "Crop(Single)      28         28\n",
+      "Other              4          4\n",
+      "Plantation        11         11\n",
+      "\n",
+      "Testing (loc_test summary)\n",
+      "               loc_id  class_num\n",
+      "class                          \n",
+      "Crop(Double)       7          7\n",
+      "Crop(Single)      28         28\n",
+      "Other              4          4\n",
+      "Plantation        11         11\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Example training data\n",
+    "loc_train = pt_classes_df2.groupby('class', group_keys = False).apply(lambda x: x.sample(frac = 0.8))\n",
+    "loc_nontrain = pt_classes_df2[~pt_classes_df2['loc_id'].isin(loc_train.loc_id)]\n",
+    "\n",
+    "loc_valid = loc_nontrain.groupby('class', group_keys = False).apply(lambda x: x.sample(frac = 0.5))\n",
+    "loc_test = loc_nontrain[~loc_nontrain['loc_id'].isin(loc_valid.loc_id)]\n",
+    "\n",
+    "print('Training (loc_train summary)\\n', loc_train.groupby('class').count())\n",
+    "print('\\nValidate (loc_test summary)\\n', loc_valid.groupby('class').count())\n",
+    "print('\\nTesting (loc_test summary)\\n', loc_test.groupby('class').count())"
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "dlnightly",
+   "language": "python",
+   "name": "dlnightly"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.9.15"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}

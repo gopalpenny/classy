@@ -1,0 +1,707 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": 128,
+   "id": "851e0317-4e5d-44f6-94e0-0333cbf294b7",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import ee\n",
+    "import geemap\n",
+    "import os\n",
+    "from datetime import datetime, timedelta\n",
+    "import numpy as np\n",
+    "import geopandas as gpd\n",
+    "import pandas as pd\n",
+    "import math\n",
+    "import matplotlib.pyplot as plt\n",
+    "import geemap\n",
+    "import plotnine as p9"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 108,
+   "id": "40129355-d40a-4430-a6c6-e0e2e711cb8b",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "ee.Initialize()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 323,
+   "id": "b5e14343-4e3e-44de-a428-80d06e5e47b2",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def get_ee_pixel_poly(coords_xy, ic_str, band_name, buffer_m = 0, vector_type = 'ee'):\n",
+    "\n",
+    "    pt = ee.Geometry.Point(coords_xy)\n",
+    "    \n",
+    "    ic = ee.ImageCollection(ic_str)\n",
+    "    ic_im = ic.filterBounds(pt).first().select(band_name)\n",
+    "    # oli8_px_int = oli8_px.select('SR_B5').gt(25000).rename('test')\n",
+    "    px_poly = ic_im.reduceToVectors(\n",
+    "        geometry = pt.buffer(buffer_m),\n",
+    "        scale = ic_im.projection().nominalScale())\n",
+    "    \n",
+    "    if vector_type == 'ee':\n",
+    "        # do nothing -- good to go\n",
+    "        pass\n",
+    "    elif vector_type == 'gpd':\n",
+    "        px_poly = geemap.ee_to_geopandas(px_poly).set_crs(epsg=4326)\n",
+    "    else:\n",
+    "        raise Exception(\"vector_type must be ee_fc or gpd\")\n",
+    "        \n",
+    "    return px_poly"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 140,
+   "id": "f565a696-a3c6-4ddc-9e8c-595f1d0ccecc",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "ic_str = \"LANDSAT/LC08/C02/T1_L2\"\n",
+    "coords_xy = [104.9995, 20.0005]\n",
+    "landsat_grid_poly = get_ee_pixel_poly(coords_xy, ic_str, 'SR_B5', buffer_m = 60, vector_type = 'gpd')\n",
+    "s2_grid_poly = get_ee_pixel_poly(coords_xy, 'COPERNICUS/S2', 'B4', buffer_m = 60, vector_type = 'gpd')\n",
+    "# s2_harm_px = get_ee_pixel_poly(coords_xy, 'COPERNICUS/S2_HARMONIZED', 'B4', buffer_m = 60, vector_type = 'gpd')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 299,
+   "id": "9a208e0d-23c3-4b2f-8870-607e7cd81a44",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "pt_xy = gpd.points_from_xy([coords_xy[0]], [coords_xy[1]], crs = 'epsg:4326')\n",
+    "pt_xy_gpd = gpd.GeoSeries(pt_xy)\n",
+    "\n",
+    "# lpx_poly = landsat_grid_poly[5:6]\n",
+    "\n",
+    "# get only the pixel polygons containing the point\n",
+    "landsat_px_poly = [landsat_grid_poly.loc[i:i] for i in landsat_grid_poly.index if pt_xy_gpd.within(landsat_grid_poly.loc[i,'geometry'])[0]][0]\n",
+    "s2_px_poly = [s2_grid_poly.loc[i:i] for i in s2_grid_poly.index if pt_xy_gpd.within(s2_grid_poly.loc[i,'geometry'])[0]][0]\n",
+    "# gpd.GeoSeries(pt_xy).within(landsat_grid_poly)\n",
+    "# pt_xy_gpd.within(landsat_grid_poly.loc[5,'geometry'])[0]"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 190,
+   "id": "5e0619d2-0dff-46f8-a81b-74ff84fab34d",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "image/png": "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MRQSyS/ArbfeysKFC1m2bBmfffZZpsPMOhVFGRYMBvF4PL2meTwegsEgAC0tLTz77LN885vfHLAtt9vN2WefzTPPPEMoFGL//v289tprsZGcL3zhC7S0tLB582Y6Ozv57//+b2pqamLPf+lLX+Ktt97ik08+IRwO8+yzzxKJRGLPt7e394rVMAzcbjfBYDAWb8/1Rce/jlw3nPJwrP/6r//iP/7jP3pdp3LxxRfz5JNP8stf/pL//b//N7/97W956aWXBt03mTaccjF+/HiWL1/O008/zY9+9COOHDnC448/HnsdPTHEex25bjjl4VivvvoqX/7yl3td5zXc94mhMFB+i4qKePTRR/m///f/8pOf/ASn00l1dTWRSCQb4WaNiqIMc7lcBAKBXtMCgUDsotmf//znXHHFFYwaNSqh9u666y6ampq4+eab+dGPfsQll1wS+0GuoqIivve97/Fv//Zv3HDDDfzrv/4rF198caztv/iLv+D666/nscceY+HChYRCIT73uc/Fli8oKOg31p54j33+2NeR64ZTHnps376dJ554giVLljBu3LjY9AkTJjBq1ChM0+TMM89k/vz5vPXWW4Pum0wbTrnw+XxMmDAB0zQpKSnhlltu4Q9/+AOhUEj7xHEysU+0tLTw+9//nr/6q7/qNX247xNDYaD8ulwuJk2ahGVZFBUVcdttt/HHP/6RgwcPZiPcrNG3zzJswoQJvPDCC0Sj0dgw5t69e5k9ezbQdd73nXfe4bnnngOgra2NZcuWccUVV3Ddddf1aW/06NEsWbIk9vc//dM/cdZZZ8X+Puecc3jkkUdif9999929zr1ffvnlXH755UDX8P9vf/tbJk2aBHSdLtu7dy/Tp08Huk6nmabJuHHjcDqdjBw5krq6utgb2Z49eygrK0u9kzJgOOUB4P333+fhhx/mu9/9LmefffYJX5thGAn3Qy4Ybrk4lmmasVNBhYWF2ieOkYk8vPHGG4wbN67f/PQYbvvEUBgov/05/jTnyU5F0RCJRCJEIhGi0SjRaJSOjg5M0+Tcc8/F4XDw4osvcuWVV7J161YOHTrEtGnTAFi2bFmv4crvfOc7XH/99b2+qnqs/fv3M3LkSPLz83n33Xf593//d370ox/Fnt+9ezcTJkygs7OTf/7nf6a5uZlLLrkE6Pr68P79+ykrK6O5uZlVq1Yxbdq02NdeL7nkEh577DGmT59OaWkp69at4+KLL44NU8+aNYsNGzYwadIkgsEgmzZt6vWV21xwMuRhx44dPPTQQ/z93/89X/ziF/us+7/+67+oqKjA6/Wyd+9efv3rX+fkRacnQy7ef/99SktLGTNmDE1NTaxZs4bzzjsv9jVm7RN/NpR56LF58+a42/pw2SeGwmDzu3PnTtxuN6effjqBQICnn36a0047rdeo9KlARdEQ2bBhA88++2zs77feeotLLrmEv/u7v2PJkiU88cQTrF+/ntLSUu699168Xi/QNTx/LNM0KSoqip0Lfu655/joo4/4x3/8RwD+3//7f2zYsIH29nY+97nP8Z3vfKfXG8dLL73Etm3bsG2bc889l/vvvz/22x3hcJjHH3+cgwcPkp+fz5e//GUWLlwYW7ayspIFCxawdOlSAoEAU6ZM4dZbb409f+2119LS0sItt9wS+02WXHvjORny8OyzzxIIBHjooYdi00aPHs2TTz4JwJYtW1ixYgXhcJgRI0Zw6aWXMmfOnPR1YpqcDLnYs2cPjz/+OH6/H4/Hw/nnn8+NN94Ye177RGbyALBr1y7+9Kc/MXPmzD6vcbjsE0NhsPk9dOgQv/rVr2hqasLlcnH22Wdz3333YVlWtl5KVujeZyIiIiLoQmsRERERQEWRiIiICKCiSERERARQUSQiIiICqCgSERERAVQUiYiIiAAqikREREQAFUUiIiIigIoiEREREUBFkYiIiAigokhEREQEUFEkIiIiAsD/D2toErDpELggAAAAAElFTkSuQmCC\n",
+      "text/plain": [
+       "<Figure size 640x480 with 1 Axes>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    },
+    {
+     "data": {
+      "text/plain": [
+       "<ggplot: (673887964)>"
+      ]
+     },
+     "execution_count": 190,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "(p9.ggplot() + \n",
+    "  p9.geom_map(data = landsat_grid_poly.iloc[5:6], color = 'blue', fill = None) + \n",
+    "  p9.geom_map(data = s2_grid_poly, color = 'red', fill = None) +\n",
+    "  p9.geom_map(data = gpd.GeoDataFrame(geometry=gpd.GeoSeries(pt_xy)), color = 'red', fill = None))# +\n",
+    "  # p9.annotate(geom = 'point', x = coords_xy[0],y = coords_xy[1]))\n",
+    "# landsat_pt.intersects("
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 301,
+   "id": "19950fdd-1644-4a71-b3b7-3f53c357b2e9",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "<folium.features.GeoJson at 0x282abcc10>"
+      ]
+     },
+     "execution_count": 301,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "import folium\n",
+    "loc_pt_latlon = coords\n",
+    "m_folium = folium.Map(location = [20.0005, 104.9995], zoom_start = 18)\n",
+    "tile = folium.TileLayer(\n",
+    "        tiles = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',\n",
+    "        attr = 'Esri',\n",
+    "        name = 'Esri Satellite',\n",
+    "        overlay = False,\n",
+    "        control = True\n",
+    "        ).add_to(m_folium)\n",
+    "\n",
+    "def style(color = 'blue'):\n",
+    "    def dummy_func(feature):\n",
+    "        return {\n",
+    "            'fill': False,\n",
+    "            'color': color,\n",
+    "            'weight': 1\n",
+    "        }\n",
+    "    return(dummy_func)\n",
+    "    \n",
+    "folium.GeoJson(data = landsat_px_poly, \n",
+    "               style_function = style('red')).add_to(m_folium)\n",
+    "folium.GeoJson(data = s2_px_poly, \n",
+    "               style_function = style()).add_to(m_folium)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 61,
+   "id": "59a1f61e-50d1-4a0d-8b82-efe4495dca14",
+   "metadata": {
+    "tags": []
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "'EPSG:4326'"
+      ]
+     },
+     "execution_count": 61,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "# s2_harm_px.crs\n",
+    "s2_px.first().geometry().projection().crs().getInfo()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 41,
+   "id": "f89c8940-ecbc-4d5b-9cd6-622d39f73d5a",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "geopandas.geodataframe.GeoDataFrame"
+      ]
+     },
+     "execution_count": 41,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "type(geemap.ee_to_geopandas(s2_harm_px))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "id": "863a42a2-6f8e-4ba8-8dd6-a1d96114d199",
+   "metadata": {
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "# oli8 = ee.ImageCollection(\"LANDSAT/LC08/C02/T1_L2\")\n",
+    "# reducervector = pt.buffer(100)\n",
+    "# oli8_px = oli8.filterBounds(pt).first().clip(reducervector)\n",
+    "# oli8_px_int = oli8_px.select('SR_B5').gt(25000).rename('test')\n",
+    "# oli8_shp = oli8_px_int.reduceToVectors(\n",
+    "#     geometry = pt,\n",
+    "#     scale = 30)\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 324,
+   "id": "0f538961-8016-44ca-b037-0c5b7a1d867f",
+   "metadata": {
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "ee_pt = ee.Geometry.Point(coords_xy)\n",
+    "s2 = ee.ImageCollection('COPERNICUS/S2')\n",
+    "# s2.first().select('B4').projection().nominalScale().divide(10).getInfo()\n",
+    "s2_im = s2.filterBounds(pt).first()\n",
+    "\n",
+    "s2_ee_poly = get_ee_pixel_poly(coords_xy, 'COPERNICUS/S2', 'B4', buffer_m = 60, vector_type = 'ee')\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 322,
+   "id": "c8750ba4-16d6-4cfc-be7d-a519dd95c0ce",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "1"
+      ]
+     },
+     "execution_count": 322,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "s2.first().select('B4').projection().nominalScale().divide(10).getInfo()\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 307,
+   "id": "36d20f0a-6b00-4f46-8246-0047c50f3b72",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "<ee.image.Image at 0x282bcbd90>"
+      ]
+     },
+     "execution_count": 307,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "s2_im"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "id": "e4903df8-1351-4aae-adb7-1c6c0895f2c1",
+   "metadata": {
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "Map = geemap.Map()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 325,
+   "id": "96472364-8bc1-4314-a09c-a29fbbbb8230",
+   "metadata": {
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "# Map.addLayer(oli8_px_int,{'bands':['test']},'oli8_px_shp')\n",
+    "Map.addLayer(s2_im,{'bands':['B8','B4','B3'],'min':4000, 'max':5000},'s2_im')\n",
+    "\n",
+    "# Map.addLayer(pt,{'color': 'red'},'pt')\n",
+    "# Map.addLayer(landsat_pt,{'color': 'blue'},'landsat_pt')\n",
+    "Map.addLayer(ee.Image().paint(s2_ee_poly,1,1),{'palette': 'blue'},'s2_px')\n",
+    "# Map.addLayer(s2_harm_px,{'color?': 'green'},'s2_harm_px')\n",
+    "Map.centerObject(pt, 18)\n",
+    "Map.addLayerControl()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 9,
+   "id": "e567dc36-44fd-4e28-960e-0c8825f3d6e9",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "application/vnd.jupyter.widget-view+json": {
+       "model_id": "35d8c058344b42eeb2e16b302f06d8ca",
+       "version_major": 2,
+       "version_minor": 0
+      },
+      "text/plain": [
+       "Map(center=[20.0005, 104.9995], controls=(WidgetControl(options=['position', 'transparent_bg'], widget=HBox(ch…"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "Map"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 302,
+   "id": "42960827-556e-41fa-a71c-a173f26646df",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<div style=\"width:100%;\"><div style=\"position:relative;width:100%;height:0;padding-bottom:60%;\"><span style=\"color:#565656\">Make this Notebook Trusted to load map: File -> Trust Notebook</span><iframe srcdoc=\"&lt;!DOCTYPE html&gt;\n",
+       "&lt;head&gt;    \n",
+       "    &lt;meta http-equiv=&quot;content-type&quot; content=&quot;text/html; charset=UTF-8&quot; /&gt;\n",
+       "    \n",
+       "        &lt;script&gt;\n",
+       "            L_NO_TOUCH = false;\n",
+       "            L_DISABLE_3D = false;\n",
+       "        &lt;/script&gt;\n",
+       "    \n",
+       "    &lt;style&gt;html, body {width: 100%;height: 100%;margin: 0;padding: 0;}&lt;/style&gt;\n",
+       "    &lt;style&gt;#map {position:absolute;top:0;bottom:0;right:0;left:0;}&lt;/style&gt;\n",
+       "    &lt;script src=&quot;https://cdn.jsdelivr.net/npm/leaflet@1.6.0/dist/leaflet.js&quot;&gt;&lt;/script&gt;\n",
+       "    &lt;script src=&quot;https://code.jquery.com/jquery-1.12.4.min.js&quot;&gt;&lt;/script&gt;\n",
+       "    &lt;script src=&quot;https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js&quot;&gt;&lt;/script&gt;\n",
+       "    &lt;script src=&quot;https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.js&quot;&gt;&lt;/script&gt;\n",
+       "    &lt;link rel=&quot;stylesheet&quot; href=&quot;https://cdn.jsdelivr.net/npm/leaflet@1.6.0/dist/leaflet.css&quot;/&gt;\n",
+       "    &lt;link rel=&quot;stylesheet&quot; href=&quot;https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css&quot;/&gt;\n",
+       "    &lt;link rel=&quot;stylesheet&quot; href=&quot;https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap-theme.min.css&quot;/&gt;\n",
+       "    &lt;link rel=&quot;stylesheet&quot; href=&quot;https://maxcdn.bootstrapcdn.com/font-awesome/4.6.3/css/font-awesome.min.css&quot;/&gt;\n",
+       "    &lt;link rel=&quot;stylesheet&quot; href=&quot;https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css&quot;/&gt;\n",
+       "    &lt;link rel=&quot;stylesheet&quot; href=&quot;https://cdn.jsdelivr.net/gh/python-visualization/folium/folium/templates/leaflet.awesome.rotate.min.css&quot;/&gt;\n",
+       "    \n",
+       "            &lt;meta name=&quot;viewport&quot; content=&quot;width=device-width,\n",
+       "                initial-scale=1.0, maximum-scale=1.0, user-scalable=no&quot; /&gt;\n",
+       "            &lt;style&gt;\n",
+       "                #map_b38071f2b37b46f96ca7a6da145df18b {\n",
+       "                    position: relative;\n",
+       "                    width: 100.0%;\n",
+       "                    height: 100.0%;\n",
+       "                    left: 0.0%;\n",
+       "                    top: 0.0%;\n",
+       "                }\n",
+       "            &lt;/style&gt;\n",
+       "        \n",
+       "&lt;/head&gt;\n",
+       "&lt;body&gt;    \n",
+       "    \n",
+       "            &lt;div class=&quot;folium-map&quot; id=&quot;map_b38071f2b37b46f96ca7a6da145df18b&quot; &gt;&lt;/div&gt;\n",
+       "        \n",
+       "&lt;/body&gt;\n",
+       "&lt;script&gt;    \n",
+       "    \n",
+       "            var map_b38071f2b37b46f96ca7a6da145df18b = L.map(\n",
+       "                &quot;map_b38071f2b37b46f96ca7a6da145df18b&quot;,\n",
+       "                {\n",
+       "                    center: [20.0005, 104.9995],\n",
+       "                    crs: L.CRS.EPSG3857,\n",
+       "                    zoom: 18,\n",
+       "                    zoomControl: true,\n",
+       "                    preferCanvas: false,\n",
+       "                }\n",
+       "            );\n",
+       "\n",
+       "            \n",
+       "\n",
+       "        \n",
+       "    \n",
+       "            var tile_layer_a5eb4846577fd4edec56701f7851aaa8 = L.tileLayer(\n",
+       "                &quot;https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png&quot;,\n",
+       "                {&quot;attribution&quot;: &quot;Data by \\u0026copy; \\u003ca href=\\&quot;http://openstreetmap.org\\&quot;\\u003eOpenStreetMap\\u003c/a\\u003e, under \\u003ca href=\\&quot;http://www.openstreetmap.org/copyright\\&quot;\\u003eODbL\\u003c/a\\u003e.&quot;, &quot;detectRetina&quot;: false, &quot;maxNativeZoom&quot;: 18, &quot;maxZoom&quot;: 18, &quot;minZoom&quot;: 0, &quot;noWrap&quot;: false, &quot;opacity&quot;: 1, &quot;subdomains&quot;: &quot;abc&quot;, &quot;tms&quot;: false}\n",
+       "            ).addTo(map_b38071f2b37b46f96ca7a6da145df18b);\n",
+       "        \n",
+       "    \n",
+       "            var tile_layer_c208c30f16ef5dd86caa0488cce057e2 = L.tileLayer(\n",
+       "                &quot;https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}&quot;,\n",
+       "                {&quot;attribution&quot;: &quot;Esri&quot;, &quot;detectRetina&quot;: false, &quot;maxNativeZoom&quot;: 18, &quot;maxZoom&quot;: 18, &quot;minZoom&quot;: 0, &quot;noWrap&quot;: false, &quot;opacity&quot;: 1, &quot;subdomains&quot;: &quot;abc&quot;, &quot;tms&quot;: false}\n",
+       "            ).addTo(map_b38071f2b37b46f96ca7a6da145df18b);\n",
+       "        \n",
+       "    \n",
+       "        function geo_json_e575aaa630916d64dfca7fe1ef58fffb_styler(feature) {\n",
+       "            switch(feature.id) {\n",
+       "                default:\n",
+       "                    return {&quot;color&quot;: &quot;red&quot;, &quot;fill&quot;: false, &quot;weight&quot;: 1};\n",
+       "            }\n",
+       "        }\n",
+       "\n",
+       "        function geo_json_e575aaa630916d64dfca7fe1ef58fffb_onEachFeature(feature, layer) {\n",
+       "            layer.on({\n",
+       "            });\n",
+       "        };\n",
+       "        var geo_json_e575aaa630916d64dfca7fe1ef58fffb = L.geoJson(null, {\n",
+       "                onEachFeature: geo_json_e575aaa630916d64dfca7fe1ef58fffb_onEachFeature,\n",
+       "            \n",
+       "                style: geo_json_e575aaa630916d64dfca7fe1ef58fffb_styler,\n",
+       "        });\n",
+       "\n",
+       "        function geo_json_e575aaa630916d64dfca7fe1ef58fffb_add (data) {\n",
+       "            geo_json_e575aaa630916d64dfca7fe1ef58fffb\n",
+       "                .addData(data)\n",
+       "                .addTo(map_b38071f2b37b46f96ca7a6da145df18b);\n",
+       "        }\n",
+       "            geo_json_e575aaa630916d64dfca7fe1ef58fffb_add({&quot;bbox&quot;: [104.9993786135271, 20.000394832875326, 104.99966540785664, 20.00066593428572], &quot;features&quot;: [{&quot;bbox&quot;: [104.9993786135271, 20.000394832875326, 104.99966540785664, 20.00066593428572], &quot;geometry&quot;: {&quot;coordinates&quot;: [[[104.9993786135271, 20.00066593351216], [104.99937861459092, 20.000394832875326], [104.99966540785664, 20.000394833648873], [104.99966540728383, 20.00066593428572], [104.9993786135271, 20.00066593351216]]], &quot;type&quot;: &quot;Polygon&quot;}, &quot;id&quot;: &quot;5&quot;, &quot;properties&quot;: {&quot;count&quot;: 1, &quot;label&quot;: 23370}, &quot;type&quot;: &quot;Feature&quot;}], &quot;type&quot;: &quot;FeatureCollection&quot;});\n",
+       "\n",
+       "        \n",
+       "    \n",
+       "        function geo_json_bc5f1d57cd94f25cad2b22691e65b92f_styler(feature) {\n",
+       "            switch(feature.id) {\n",
+       "                default:\n",
+       "                    return {&quot;color&quot;: &quot;blue&quot;, &quot;fill&quot;: false, &quot;weight&quot;: 1};\n",
+       "            }\n",
+       "        }\n",
+       "\n",
+       "        function geo_json_bc5f1d57cd94f25cad2b22691e65b92f_onEachFeature(feature, layer) {\n",
+       "            layer.on({\n",
+       "            });\n",
+       "        };\n",
+       "        var geo_json_bc5f1d57cd94f25cad2b22691e65b92f = L.geoJson(null, {\n",
+       "                onEachFeature: geo_json_bc5f1d57cd94f25cad2b22691e65b92f_onEachFeature,\n",
+       "            \n",
+       "                style: geo_json_bc5f1d57cd94f25cad2b22691e65b92f_styler,\n",
+       "        });\n",
+       "\n",
+       "        function geo_json_bc5f1d57cd94f25cad2b22691e65b92f_add (data) {\n",
+       "            geo_json_bc5f1d57cd94f25cad2b22691e65b92f\n",
+       "                .addData(data)\n",
+       "                .addTo(map_b38071f2b37b46f96ca7a6da145df18b);\n",
+       "        }\n",
+       "            geo_json_bc5f1d57cd94f25cad2b22691e65b92f_add({&quot;bbox&quot;: [104.99942641297754, 20.000440016476528, 104.99952201108741, 20.000530383639575], &quot;features&quot;: [{&quot;bbox&quot;: [104.99942641297754, 20.000440016476528, 104.99952201108741, 20.000530383639575], &quot;geometry&quot;: {&quot;coordinates&quot;: [[[104.99942641297754, 20.000530383355937], [104.99942641330487, 20.000440016476528], [104.99952201108741, 20.000440016760166], [104.99952201081463, 20.000530383639575], [104.99942641297754, 20.000530383355937]]], &quot;type&quot;: &quot;Polygon&quot;}, &quot;id&quot;: &quot;91&quot;, &quot;properties&quot;: {&quot;count&quot;: 1, &quot;label&quot;: 3950}, &quot;type&quot;: &quot;Feature&quot;}], &quot;type&quot;: &quot;FeatureCollection&quot;});\n",
+       "\n",
+       "        \n",
+       "&lt;/script&gt;\" style=\"position:absolute;width:100%;height:100%;left:0;top:0;border:none !important;\" allowfullscreen webkitallowfullscreen mozallowfullscreen></iframe></div></div>"
+      ],
+      "text/plain": [
+       "<folium.folium.Map at 0x282c28a60>"
+      ]
+     },
+     "execution_count": 302,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "m_folium"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 76,
+   "id": "ebfc9eef-dbcd-4138-b799-012efad0f64f",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>geometry</th>\n",
+       "      <th>count</th>\n",
+       "      <th>label</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>0</th>\n",
+       "      <td>POLYGON ((104.99943 20.00053, 104.99943 20.000...</td>\n",
+       "      <td>1</td>\n",
+       "      <td>3950</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "                                            geometry  count  label\n",
+       "0  POLYGON ((104.99943 20.00053, 104.99943 20.000...      1   3950"
+      ]
+     },
+     "execution_count": 76,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "s2_harm_px = s2_harm_px.set_crs(epsg=4326)\n",
+    "s2_harm_px"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 196,
+   "id": "6b597cb2-41f6-464b-add2-6115a5d26760",
+   "metadata": {},
+   "outputs": [
+    {
+     "ename": "AttributeError",
+     "evalue": "'GeoDataFrame' object has no attribute 'ix'",
+     "output_type": "error",
+     "traceback": [
+      "\u001b[0;31m---------------------------------------------------------------------------\u001b[0m",
+      "\u001b[0;31mAttributeError\u001b[0m                            Traceback (most recent call last)",
+      "\u001b[0;32m/var/folders/js/4lzq4_rd12ndjrhf15w_jfrw0000gn/T/ipykernel_75969/2238881992.py\u001b[0m in \u001b[0;36m<cell line: 4>\u001b[0;34m()\u001b[0m\n\u001b[1;32m      2\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m      3\u001b[0m \u001b[0;31m# landsat_grid_poly.iloc[6:7].intersects(gpd.GeoSeries(pt_xy))\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m----> 4\u001b[0;31m \u001b[0mlandsat_grid_poly\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mix\u001b[0m\u001b[0;34m[\u001b[0m\u001b[0;36m0\u001b[0m\u001b[0;34m]\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m",
+      "\u001b[0;32m~/mambaforge/envs/manclassify/lib/python3.9/site-packages/pandas/core/generic.py\u001b[0m in \u001b[0;36m__getattr__\u001b[0;34m(self, name)\u001b[0m\n\u001b[1;32m   5573\u001b[0m         ):\n\u001b[1;32m   5574\u001b[0m             \u001b[0;32mreturn\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m[\u001b[0m\u001b[0mname\u001b[0m\u001b[0;34m]\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m-> 5575\u001b[0;31m         \u001b[0;32mreturn\u001b[0m \u001b[0mobject\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0m__getattribute__\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mself\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mname\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m   5576\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m   5577\u001b[0m     \u001b[0;32mdef\u001b[0m \u001b[0m__setattr__\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mself\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mname\u001b[0m\u001b[0;34m:\u001b[0m \u001b[0mstr\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mvalue\u001b[0m\u001b[0;34m)\u001b[0m \u001b[0;34m->\u001b[0m \u001b[0;32mNone\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
+      "\u001b[0;31mAttributeError\u001b[0m: 'GeoDataFrame' object has no attribute 'ix'"
+     ]
+    }
+   ],
+   "source": [
+    "# landsat_grid_poly.iloc[1:2]\n",
+    "\n",
+    "# landsat_grid_poly.iloc[6:7].intersects(gpd.GeoSeries(pt_xy))\n",
+    "landsat_grid_poly.ix[0]"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 214,
+   "id": "1feedb81-f495-4a0d-901c-f5edcc535d6e",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import geopandas\n",
+    "from shapely.geometry import Polygon, Point\n",
+    "\n",
+    "p1 = Point(.5,.5)\n",
+    "p2 = Point(.5,1)\n",
+    "p3 = Point(1,1)\n",
+    "\n",
+    "points = GeoSeries([p1,p2,p3])\n",
+    "\n",
+    "poly = GeoSeries([Polygon([(0,0), (0,2), (2,2), (2,0)])])\n",
+    "\n",
+    "# geopandas.overlay(points, poly, how='intersection')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 203,
+   "id": "27a8149b-de3f-43b5-b679-f49b8dffe28c",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "'0.11.1'"
+      ]
+     },
+     "execution_count": 203,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "gpd.__version__"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 215,
+   "id": "3cd9ef8d-9fd7-426c-88ba-29af84213515",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "0     True\n",
+       "1    False\n",
+       "2    False\n",
+       "dtype: bool"
+      ]
+     },
+     "execution_count": 215,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "g1 = gpd.GeoSeries([p1,p2,p3])\n",
+    "g2 = gpd.GeoSeries([p2,p3])\n",
+    "\n",
+    "g = gpd.GeoSeries([Polygon([(0,0), (0,2), (2,2), (2,0)])])\n",
+    "\n",
+    "g1.intersects(g) # Flags the first point as inside, even though all are.\n",
+    "# g2.intersects(g) # The second point gets picked up as inside (but not 3rd)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 298,
+   "id": "9665fb1f-d81c-4226-a890-fbfd1a5c2dc9",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "<Geographic 2D CRS: EPSG:4326>\n",
+       "Name: WGS 84\n",
+       "Axis Info [ellipsoidal]:\n",
+       "- Lat[north]: Geodetic latitude (degree)\n",
+       "- Lon[east]: Geodetic longitude (degree)\n",
+       "Area of Use:\n",
+       "- name: World.\n",
+       "- bounds: (-180.0, -90.0, 180.0, 90.0)\n",
+       "Datum: World Geodetic System 1984 ensemble\n",
+       "- Ellipsoid: WGS 84\n",
+       "- Prime Meridian: Greenwich"
+      ]
+     },
+     "execution_count": 298,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "landsat_px_poly[0].crs"
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "manclassify",
+   "language": "python",
+   "name": "manclassify"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.9.13"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}

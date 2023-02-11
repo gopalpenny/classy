@@ -1,0 +1,251 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "id": "524134c9-d55b-498f-b20d-8b71fc9fc2b7",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from __future__ import print_function\n",
+    "import argparse\n",
+    "import torch\n",
+    "import torch.nn as nn\n",
+    "import torch.optim as optim\n",
+    "import numpy as np\n",
+    "import matplotlib\n",
+    "matplotlib.use('Agg')\n",
+    "import matplotlib.pyplot as plt"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 5,
+   "id": "6fac56ae-1508-4fb7-9c9a-dcb043363888",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "class Sequence(nn.Module):\n",
+    "    def __init__(self):\n",
+    "        super(Sequence, self).__init__()\n",
+    "        # features 1, hidden size 51\n",
+    "        self.lstm1 = nn.LSTMCell(1, 51)\n",
+    "        self.lstm2 = nn.LSTMCell(51, 51)\n",
+    "        self.linear = nn.Linear(51, 1)\n",
+    "\n",
+    "    def forward(self, input, future = 0):\n",
+    "        outputs = []\n",
+    "        h_t = torch.zeros(input.size(0), 51, dtype=torch.double)\n",
+    "        c_t = torch.zeros(input.size(0), 51, dtype=torch.double)\n",
+    "        h_t2 = torch.zeros(input.size(0), 51, dtype=torch.double)\n",
+    "        c_t2 = torch.zeros(input.size(0), 51, dtype=torch.double)\n",
+    "\n",
+    "        for input_t in input.split(1, dim=1):\n",
+    "            h_t, c_t = self.lstm1(input_t, (h_t, c_t))\n",
+    "            h_t2, c_t2 = self.lstm2(h_t, (h_t2, c_t2))\n",
+    "            output = self.linear(h_t2)\n",
+    "            outputs += [output]\n",
+    "        for i in range(future):# if we should predict the future\n",
+    "            h_t, c_t = self.lstm1(output, (h_t, c_t))\n",
+    "            h_t2, c_t2 = self.lstm2(h_t, (h_t2, c_t2))\n",
+    "            output = self.linear(h_t2)\n",
+    "            outputs += [output]\n",
+    "        outputs = torch.cat(outputs, dim=1)\n",
+    "        return outputs"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 27,
+   "id": "db818c17-c12e-4f11-a121-eafd09e49f2d",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "torch.Size([97, 1])\n"
+     ]
+    }
+   ],
+   "source": [
+    "i = 0\n",
+    "# for x in np.arange(5):\n",
+    "#     print('i: ' + str(i))\n",
+    "#     i += 1\n",
+    "for input_t in input.split(1, dim=1):\n",
+    "    if i == 1:\n",
+    "        print(input_t.shape)\n",
+    "    # print('i: ' + str(i))\n",
+    "    i += 1"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "id": "87c8719a-2df3-402b-bd0f-dc50ae455024",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# parser = argparse.ArgumentParser()\n",
+    "# parser.add_argument('--steps', type=int, default=15, help='steps to run')\n",
+    "# opt = parser.parse_args()\n",
+    "# set random seed to 0\n",
+    "np.random.seed(0)\n",
+    "torch.manual_seed(0)\n",
+    "# load data and make training set\n",
+    "data = torch.load('traindata.pt')\n",
+    "input = torch.from_numpy(data[3:, :-1])\n",
+    "target = torch.from_numpy(data[3:, 1:])\n",
+    "test_input = torch.from_numpy(data[:3, :-1])\n",
+    "test_target = torch.from_numpy(data[:3, 1:])\n",
+    "# build the model\n",
+    "seq = Sequence()\n",
+    "seq.double()\n",
+    "criterion = nn.MSELoss()\n",
+    "# use LBFGS as optimizer since we can load the whole data to train\n",
+    "optimizer = optim.LBFGS(seq.parameters(), lr=0.8)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 13,
+   "id": "bd0177ef-3e48-4d0d-853b-cbf5a4d2e225",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "STEP:  0\n",
+      "loss: 0.0012797646167832567\n",
+      "loss: 0.001169055495471881\n",
+      "loss: 0.0011498916013729771\n",
+      "loss: 0.0011288245291281454\n",
+      "loss: 0.0010630561341020393\n",
+      "loss: 0.0009564006443272563\n",
+      "loss: 0.00082108275899727\n",
+      "loss: 0.0007670796029156168\n",
+      "loss: 0.0007294716423584051\n",
+      "loss: 0.000724655816981735\n",
+      "loss: 0.0007206211393655977\n",
+      "loss: 0.0007126686053115696\n",
+      "loss: 0.0006961310498781834\n",
+      "loss: 0.000664110181155962\n",
+      "loss: 0.000610121070230019\n",
+      "loss: 0.0005285228387129998\n",
+      "loss: 0.00041272507103123365\n",
+      "loss: 0.000330215794523346\n",
+      "loss: 0.0003121712149390207\n",
+      "loss: 0.0003235219220500932\n"
+     ]
+    },
+    {
+     "data": {
+      "text/plain": [
+       "tensor(0.0013, dtype=torch.float64, grad_fn=<MseLossBackward0>)"
+      ]
+     },
+     "execution_count": 13,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "#begin to train\n",
+    "# for i in range(opt.steps):\n",
+    "i = 0\n",
+    "print('STEP: ', i)\n",
+    "def closure():\n",
+    "    optimizer.zero_grad()\n",
+    "    out = seq(input)\n",
+    "    loss = criterion(out, target)\n",
+    "    print('loss:', loss.item())\n",
+    "    loss.backward()\n",
+    "    return loss\n",
+    "optimizer.step(closure)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 12,
+   "id": "032d8e84-b1cd-423e-b786-d5b140d0019d",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "STEP:  0\n",
+      "loss: 0.5023738122475572\n",
+      "loss: 0.49856639379435636\n",
+      "loss: 0.47901196061152884\n",
+      "loss: 0.4463349021484236\n",
+      "loss: 0.35406310257492596\n",
+      "loss: 0.20507016617681337\n",
+      "loss: 1.396053156117307\n",
+      "loss: 0.03249441148472198\n",
+      "loss: 0.02993487583960496\n",
+      "loss: 0.028326821011534428\n",
+      "loss: 0.026830612218824056\n",
+      "loss: 0.023771201989991487\n",
+      "loss: 0.018901413504548843\n",
+      "loss: 0.010646818233208458\n",
+      "loss: 0.008725752090268811\n",
+      "loss: 0.007872181287777372\n",
+      "loss: 0.00547784274959501\n",
+      "loss: 0.004051933564064951\n",
+      "loss: 0.0027296227011610404\n",
+      "loss: 0.001540265276982263\n",
+      "test loss: 0.0013000876156961515\n"
+     ]
+    }
+   ],
+   "source": [
+    "# begin to predict, no need to track gradient here\n",
+    "with torch.no_grad():\n",
+    "    future = 1000\n",
+    "    pred = seq(test_input, future=future)\n",
+    "    loss = criterion(pred[:, :-future], test_target)\n",
+    "    print('test loss:', loss.item())\n",
+    "    y = pred.detach().numpy()\n",
+    "# draw the result\n",
+    "plt.figure(figsize=(30,10))\n",
+    "plt.title('Predict future values for time sequences\\n(Dashlines are predicted values)', fontsize=30)\n",
+    "plt.xlabel('x', fontsize=20)\n",
+    "plt.ylabel('y', fontsize=20)\n",
+    "plt.xticks(fontsize=20)\n",
+    "plt.yticks(fontsize=20)\n",
+    "def draw(yi, color):\n",
+    "    plt.plot(np.arange(input.size(1)), yi[:input.size(1)], color, linewidth = 2.0)\n",
+    "    plt.plot(np.arange(input.size(1), input.size(1) + future), yi[input.size(1):], color + ':', linewidth = 2.0)\n",
+    "draw(y[0], 'r')\n",
+    "draw(y[1], 'g')\n",
+    "draw(y[2], 'b')\n",
+    "plt.savefig('predict%d.pdf'%i)\n",
+    "plt.close()"
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "dlnightly",
+   "language": "python",
+   "name": "dlnightly"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.9.13"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}

@@ -1,0 +1,19 @@
+name: manclassify
+channels:
+  - local
+  - conda-forge
+dependencies:
+  - python=3.9
+  - geemap
+  - pandas
+  - numpy
+  - plotnine
+  - geopandas
+  - streamlit
+  - earthengine-api
+  - google-cloud-sdk
+  - ipykernel
+  - jupyterlab
+  - folium
+  - streamlit-folium
+  - leafmap
