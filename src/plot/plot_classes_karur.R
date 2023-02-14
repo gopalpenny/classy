@@ -1,7 +1,9 @@
-# read_class_karur
+# plot_classes_karur
 
 library(raster)
 library(tidyverse)
+
+out_path <- ggp::fig_set_output("plot_classes_karur")
 
 
 classy_path <- "/Users/gopal/Google Drive/_Research/Research projects/ML/classy/classy_downloads"
@@ -10,25 +12,25 @@ r_karur <- stack(karur_path)
 
 r_karur_change <- r_karur
 
-for (i in 2:length(r_karur)) {
+for (i in 2:nlayers(r_karur)) {
   r_karur_change[[i]][r_karur[[1]] == r_karur[[i]]] <- NA
 }
 
 
-png(file.path(classy_path, paste0("karur_crops_",6+2014,".png")), width = 1200, height = 800)
+png(file.path(out_path, paste0("karur_crops_",6+2014,".png")), width = 1200, height = 800)
 plot(r_karur[[6]])
 dev.off()
 
-for (i in 1:length(r_karur)){
-  png(file.path(classy_path, paste0("karur_crops_change_",i+2014,".png")), width = 1200, height = 800)
+for (i in 1:nlayers(r_karur)){
+  png(file.path(out_path, paste0("karur_crops_change_",i+2014,".png")), width = 1200, height = 800)
   plot(r_karur_change[[i]])
   dev.off()
 }
 
 # names(r_karur_change) <- gsub
-plot(r_karur_change)
-RStoolbox::ggR(r_karur$X1_crops, geom_raster = TRUE) +
-  scale_fill_continuous()
+# plot(r_karur_change)
+# RStoolbox::ggR(r_karur$X1_crops, geom_raster = TRUE) +
+#   scale_fill_continuous()
 
 
 karur_df <- as_tibble(as.data.frame(r_karur, xy = TRUE))
@@ -73,7 +75,6 @@ p_karur_alluvial <- ggplot(karur_count,
   ggp::t_manu() %+replace% theme(axis.title.x = element_blank())
 
 
-ggsave("karur_alluvial.png", p_karur_alluvial, width = 5, height = 3, path = classy_path)
-karur_df_count
+ggsave("karur_alluvial.png", p_karur_alluvial, width = 5, height = 3, path = out_path)
 
 ggp::obj_size(karur_df)
