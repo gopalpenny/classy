@@ -1,11 +1,13 @@
 # plot classapp_ts.R
 
+library(tidyverse)
 thailand_path <- "/Users/gopal/Google Drive/_Research/Research projects/ML/classapp/app_data/Thailand"
 classy_path <- "/Users/gopal/Google Drive/_Research/Research projects/ML/classy"
-out_path <- file.path(classy_path, "plot_thailand_ts")
+# out_path <- file.path(classy_path, "plot_thailand_ts")
 # dir.create(out_path)
 ts_path <- file.path(thailand_path, "Thailand_download_timeseries")
 class_path <- file.path(thailand_path, "Thailand_classification/location_classification.csv")
+out_path <- ggp::fig_set_output("plot_thailand_ts")
 
 
 classes <- read_csv(class_path)
@@ -83,7 +85,7 @@ year_divs = tibble(year = 2019:2022,
 
 p_loc_examples <- ggplot(loc_examples, aes(date, ndvi_adj, color = as.factor(loc_id))) + 
   geom_smooth(span = 0.07, se = FALSE) +
-  geom_point(alpha = 0.4, size = 0.5) +
+  geom_point(alpha = 0.4, size = 1) +
   ylab("NDVI") +
   geom_vline(data = year_divs, aes(xintercept = date), alpha = 0.5, linetype = "dashed") +
   # coord_cartesian(ylim = c(-0.2,1.2))# +
