@@ -81,19 +81,21 @@ karur_count <- karur_df_count_wide %>%
 p_karur_alluvial <- ggplot(karur_count,
        aes(x = year, y = n * 900 / 1e4, stratum = crop, alluvium = id,
            label = crop)) +
-  scale_fill_manual("Select\nmulti-year\npatterns",values = c("forestgreen","lightgreen","gold2","tan","gray")) +
+  scale_fill_manual("Select\nmulti-year\npatterns",values = c("forestgreen","lightgreen","gold2","tan","gray"), 
+                    guide = guide_legend(order = 2)) +
   geom_flow(stat = "alluvium", lode.guidance = "frontback",
             color = "darkgray", aes(fill = plot_highlight)) +
   ggnewscale::new_scale_fill() +
   geom_stratum(aes(fill = crop)) +
-  scale_fill_manual('Annual\ncropping\nintensity',values = c("forestgreen","lightgreen","gold2","tan")) +
+  scale_fill_manual('Annual\ncropping\nintensity',values = c("forestgreen","lightgreen","gold2","tan"), 
+                    guide = guide_legend(order = 1)) +
   # geom_text(stat = "stratum", aes(label = after_stat(stratum)))
   scale_x_continuous(breaks = 2015:2021) +
   scale_y_continuous("Area (ha)",labels = scales::label_number(scale_cut = scales::cut_si("")))+
-  ggp::t_manu() %+replace% theme(axis.title.x = element_blank())
+  ggp::t_manu() %+replace% theme(axis.title.x = element_blank(),legend.box = "horizontal")
 p_karur_alluvial
 
-ggsave("karur_alluvial.png", p_karur_alluvial, width = 5, height = 4, path = out_path)
+ggsave("karur_alluvial.png", p_karur_alluvial, width = 6, height = 3, path = out_path)
 
 ggp::obj_size(karur_df)
 
