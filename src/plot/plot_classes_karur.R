@@ -8,7 +8,9 @@ library(data.table)
 out_path <- ggp::fig_set_output("plot_classes_karur")
 
 
-classy_path <- "/Users/gopal/Google Drive/_Research/Research projects/ML/classy/classy_downloads"
+classy_paths <- c("/Users/gopal/Google Drive/_Research/Research projects/ML/classy/classy_downloads",
+                  "/Users/gopalpenny/Library/CloudStorage/GoogleDrive-gopalpenny@gmail.com/My Drive/_Research/Research projects/ML/classy/classy_downloads")
+classy_path <- classy_paths[file.exists(classy_paths)][1]
 karur_path <- file.path(classy_path,"karur_crops_2015_2021.tif")
 r_karur <- stack(karur_path)
 
@@ -92,10 +94,15 @@ p_karur_alluvial <- ggplot(karur_count,
   # geom_text(stat = "stratum", aes(label = after_stat(stratum)))
   scale_x_continuous(breaks = 2015:2021) +
   scale_y_continuous("Area (ha)",labels = scales::label_number(scale_cut = scales::cut_si("")))+
-  ggp::t_manu() %+replace% theme(axis.title.x = element_blank(),legend.box = "horizontal")
+  ggp::t_manu() %+replace% 
+  theme(axis.title.x = element_blank(),legend.box = "horizontal",
+        axis.text.x = element_text(size = 10),
+        axis.text.y = element_text(size = 10),
+        axis.title.y = element_text(size = 10),
+        legend.title = element_text(size = 10))
 p_karur_alluvial
 
-ggsave("karur_alluvial.png", p_karur_alluvial, width = 6, height = 3, path = out_path)
+ggsave("karur_alluvial.png", p_karur_alluvial, width = 5, height = 2.25, path = out_path)
 
 ggp::obj_size(karur_df)
 

@@ -19,6 +19,9 @@ import matplotlib.pyplot as plt
 from ml_transformer import SentinelDatasets, TransformerClassifier
 
 # %%
+# os.chdir("/Users/gopalpenny/Projects/ml/classy/classapp/transformer_classifier")
+
+# %%
 
 data_path = "./data"
 sim_path = "./sim"
