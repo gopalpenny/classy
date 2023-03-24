@@ -20,6 +20,7 @@ from ml_transformer import SentinelDatasets, TransformerClassifier
 
 # %%
 # os.chdir("/Users/gopalpenny/Projects/ml/classy/classapp/transformer_classifier")
+os.chdir("/Users/gopal/Projects/ml/classy/classapp/transformer_classifier")
 
 # %%
 
@@ -179,7 +180,7 @@ for epoch in range(n_epochs):
     accuracy_hist_train[epoch] /= float(len(train_dl.dataset))
     
     with torch.no_grad():
-        for _, x_batch, y_batch in train_dl:
+        for _, x_batch, y_batch in valid_dl:
 
             # Forward pass
             pred = xnn(x_batch)
@@ -199,7 +200,9 @@ for epoch in range(n_epochs):
         
     print(f'Epoch [{epoch+1}/{n_epochs}], Loss: {loss_hist_train[epoch]:.4f}, Accuracy: {accuracy_hist_train[epoch]:.4f}'
           f' Val Accuracy: {accuracy_hist_valid[epoch]:.4f}')
-        
+    
+
+torch.save(xnn, os.path.join(sim_path, "xnn_trained.pt"))       
 
 # %%
 fig, axs = plt.subplots(2)
