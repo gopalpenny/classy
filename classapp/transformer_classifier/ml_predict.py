@@ -37,6 +37,7 @@ if not os.path.exists(predict_path):
     os.mkdir(predict_path)
 
 
+# Load data
 s1_all = torch.load(os.path.join(data_path, 'model_data_s1.pt'))
 s2_all = torch.load(os.path.join(data_path, 'model_data_s2.pt'))
 
@@ -51,14 +52,10 @@ labels[:, 0] = pt_ids_all
 # Prep datasets
 data_predict = SentinelDatasets(s1_all, s2_all, labels, 64, 64)
 
-# %%
 # Prep dataloaders
-
 dl = DataLoader(data_predict, batch_size = 20, drop_last = False)
 
-
 # %%
-
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # %%
