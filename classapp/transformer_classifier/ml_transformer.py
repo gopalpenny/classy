@@ -71,7 +71,7 @@ class SentinelDatasets(Dataset):
         # get one-hot encoding for the point as tensor
         y = self.y.clone().detach()[idx,1:].float()
         
-        return s1, s2, y
+        return s1, s2, y, loc_id
         
     def __len__(self):
         return self.y.shape[0]

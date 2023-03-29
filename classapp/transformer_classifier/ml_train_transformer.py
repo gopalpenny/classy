@@ -45,13 +45,13 @@ labels = torch.load(os.path.join(data_path, 'model_data_labels.pt'))
 #     return ary
 
 
-one_hot_encoder = OneHotEncoder(sparse = False)
-one_hot_encoder.fit(labels[:,1:])
+# one_hot_encoder = OneHotEncoder(sparse = False)
+# one_hot_encoder.fit(labels[:,1:])
 
-labels_one_hot = torch.cat((labels[:,0:1], 
-                                torch.tensor(one_hot_encoder.transform(labels[:,1:]))), dim = 1)
-# torch.all(labels_one_hot == labels_one_hot_prev)
-labels_one_hot
+# labels_one_hot = torch.cat((labels[:,0:1], 
+#                                 torch.tensor(one_hot_encoder.transform(labels[:,1:]))), dim = 1)
+# # torch.all(labels_one_hot == labels_one_hot_prev)
+# labels_one_hot
 
 # %%
 y_train, y_eval = train_test_split(labels, train_size = 0.8, stratify = labels[:, 1])
@@ -113,7 +113,7 @@ xnn = TransformerClassifier(64, dmodel = 36, nhead = 6, dhid = 100, nlayers = 3,
 
 # %%
 # test transformer
-s1, s2, y = next(iter(train_dl))
+s1, s2, y, _ = next(iter(train_dl))
 xnn(s2)
 
 # %%
@@ -151,7 +151,7 @@ accuracy_hist_valid = [0] * n_epochs
 for epoch in range(n_epochs):
     counter = 0
     xnn.train()
-    for _, x_batch, y_batch in train_dl:
+    for _, x_batch, y_batch, _ in train_dl:
         
         # Forward pass
         pred = xnn(x_batch)
@@ -181,7 +181,7 @@ for epoch in range(n_epochs):
     accuracy_hist_train[epoch] /= float(len(train_dl.dataset))
     
     with torch.no_grad():
-        for _, x_batch, y_batch in valid_dl:
+        for _, x_batch, y_batch, _ in valid_dl:
 
             # Forward pass
             pred = xnn(x_batch)
@@ -206,7 +206,7 @@ for epoch in range(n_epochs):
 loss_hist_test = 0
 accuracy_hist_test = 0
 with torch.no_grad():
-    for _, x_batch, y_batch in test_dl:
+    for _, x_batch, y_batch, _ in test_dl:
 
         # Forward pass
         pred = xnn(x_batch)
