@@ -7,10 +7,14 @@ Created on Sat Jan 14 19:18:30 2023
 """
 
 # %%
+import os
+# os.chdir("/Users/gopalpenny/Projects/ml/classy/classapp/transformer_classifier")
+# os.chdir("/Users/gopal/Projects/ml/classy/classapp/transformer_classifier")
+
+# %%
 import torch
 from torch import nn, Tensor
 from torch.utils.data import DataLoader, WeightedRandomSampler
-import os
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder
 import numpy as np
@@ -18,9 +22,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from ml_transformer import SentinelDatasets, TransformerClassifier
 
-# %%
-# os.chdir("/Users/gopalpenny/Projects/ml/classy/classapp/transformer_classifier")
-os.chdir("/Users/gopal/Projects/ml/classy/classapp/transformer_classifier")
 
 # %%
 
@@ -142,7 +143,7 @@ optimizer = torch.optim.Adam(xnn.parameters(), lr = 0.001)
 # for train_features, train_labels in train_dl:
 #     i += 1
 #     print(i)
-n_epochs = 50
+n_epochs = 100
 loss_hist_train = [0] * n_epochs
 accuracy_hist_train = [0] * n_epochs
 loss_hist_valid = [0] * n_epochs
@@ -195,24 +196,61 @@ for epoch in range(n_epochs):
             loss_hist_valid[epoch] += loss.item() * y_batch.size(0)
             accuracy_hist_valid[epoch] += get_num_correct(pred, y_batch)
 
-        loss_hist_valid[epoch] /= float(len(train_dl.dataset))
-        accuracy_hist_valid[epoch] /= float(len(train_dl.dataset))
+        loss_hist_valid[epoch] /= float(len(valid_dl.dataset))
+        accuracy_hist_valid[epoch] /= float(len(valid_dl.dataset))
         
     print(f'Epoch [{epoch+1}/{n_epochs}], Loss: {loss_hist_train[epoch]:.4f}, Accuracy: {accuracy_hist_train[epoch]:.4f}'
           f' Val Accuracy: {accuracy_hist_valid[epoch]:.4f}')
     
+# %%
+loss_hist_test = 0
+accuracy_hist_test = 0
+with torch.no_grad():
+    for _, x_batch, y_batch in test_dl:
 
-torch.save(xnn, os.path.join(sim_path, "xnn_trained.pt"))       
+        # Forward pass
+        pred = xnn(x_batch)
+        
+        y_batch = y_batch.flatten().type(torch.LongTensor)
+        
+        # print('pred',pred)
+        # print('target',y_batch)
+        loss = loss_fn(pred, y_batch)
+
+        # Accumulate loss and accuracy
+        loss_hist_test += loss.item() * y_batch.size(0)
+        accuracy_hist_test += get_num_correct(pred, y_batch)
+
+    loss_hist_test /= float(len(test_dl.dataset))
+    accuracy_hist_test /= float(len(test_dl.dataset))
+    
+print(f'Test Loss: {loss_hist_test:.4f}, Test Accuracy: {accuracy_hist_test:.4f}')
+    
+
+torch.save(xnn, os.path.join(sim_path, "xnn_trained.pt"))    
+
+# %%
+
+# test_dl
+# # %%
+# for i, x in enumerate(test_dl):   
+#     # print(i)
+#     print(len(x['x']))
+    # print(y_batch.shape)
 
 # %%
 fig, axs = plt.subplots(2)
-axs[0].plot(loss_hist_train)
-axs[0].plot(loss_hist_valid)
+axs[0].plot(loss_hist_train, label = "Training")
+axs[0].plot(loss_hist_valid, label = "Validation")
 axs[0].set(ylabel = "Loss")
+axs[0].legend()
 axs[1].plot(accuracy_hist_train)
 axs[1].plot(accuracy_hist_valid)
 axs[1].set(ylabel = "Accuracy", xlabel = "Epoch")
 
+# plt.show()
+
+# %%
 plt.savefig(os.path.join(sim_path, "training_loss.png"))
 
 # %%
