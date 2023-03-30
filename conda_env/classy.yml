@@ -1,4 +1,4 @@
-name: classapp
+name: classy
 channels:
   - local
   - conda-forge
