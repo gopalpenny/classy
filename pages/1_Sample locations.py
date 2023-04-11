@@ -142,7 +142,7 @@ with gen_random_columns[0]:
     st.text("")
     addcropmask = st.checkbox('GFSAD mask?', value = False, key = 'gfsadCropMask')
 with gen_random_columns[1]:
-    numRandomPts = st.number_input('Num pts', 1, 5000, value = 10, key = 'numRandomPts')
+    numRandomPts = st.number_input('Num pts', 1, 50000, value = 10, key = 'numRandomPts')
 with gen_random_columns[2]:
     eeRandomPtsSeed = st.number_input('Earth Engine seed', 0, 5000, value = 10, key = 'eeRandomPtsSeed')
 
