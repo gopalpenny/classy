@@ -4,6 +4,14 @@
 Created on Fri Mar 24 17:09:43 2023
 
 @author: gopal
+
+This script uses a trained transformer model to predict
+cropping intensity based on sentinel 1 data. The Sentinel 1 data
+should be contaned in a .pt file as a Tensor, with the following columns:
+    
+    loc_id, day, VV, VH, angle
+    
+
 """
 
 # ml_predict.py
@@ -17,6 +25,8 @@ wd_exists = [x for x in wds if os.path.exists(x)][0]
 
 # %%
 import torch
+import sys
+import time
 from torch import nn, Tensor
 from torch.utils.data import DataLoader, WeightedRandomSampler
 from sklearn.model_selection import train_test_split
@@ -24,18 +34,20 @@ from sklearn.preprocessing import OneHotEncoder
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from ml_transformer import TransformerClassifier, S1Dataset
+from ml_transformer import TransformerClassifier, S1Dataset, scale_model_data
 
 
 # %%
 
-def predict_s1_classes(s1_data_path, trained_model_path, output_dir_path):
+def predict_s1_classes(trained_model_path, s1_data_path, norms_path, output_dir_path):
     
     if not os.path.exists(output_dir_path):
         os.mkdir(output_dir_path)
     
     # Load data
-    s1_all = torch.load(s1_data_path)
+    s1_all = scale_model_data(data_path = s1_data_path, 
+                              norms_path = norms_path,
+                              data_name = "s1")
     
     # create empty labels tensor with pt_ids (for Dataset & DataLoader)
     # This answer suggests using Dataloader even for eval mode: https://stackoverflow.com/a/73396570
@@ -88,13 +100,36 @@ def predict_s1_classes(s1_data_path, trained_model_path, output_dir_path):
 
 if __name__ == '__main__':
     
-    data_path = "./data"
-    model_path = "./s1_train"
-    trained_model_path = os.path.join(model_path, 's1_xnn_trained.pt')
-    output_dir_path = "./predict"
-    s1_data_path = os.path.join(data_path, 'model_data_s1.pt')
+    cmd_args = sys.argv
+    print(f'Number of input arguments: {len(cmd_args)-1}.\n')
     
-    predict_s1_classes(s1_data_path, trained_model_path, output_dir_path)
+    
+    num_user_args = 5
+
+    if len(cmd_args) == num_user_args:
+        trained_model_path = cmd_args[1]
+        s1_data_path = cmd_args[2]
+        norms_path = cmd_args[3]
+        output_dir_path = cmd_args[4]
+        print('User-defined input arguments:\n')
+    else:
+        
+        trained_model_path = 's1_train/s1_xnn_trained.pt'
+        norms_path = "data/model_data_norms.pt"
+        output_dir_path = "./predict"
+        s1_data_path =  'data/model_data_s1.pt'
+        print(f'For defining custom arguments, specify {num_user_args-1} inputs.')
+        print('Using default input arguments:\n')
+        
+    print(f's1_data_path: {s1_data_path}')
+    print(f'trained_model_path: {trained_model_path}')
+    print(f'output_dir_path: {output_dir_path}\n')
+    print('Running predict_s1_classes() function...')
+    # time.sleep(1)
+    
+    predict_s1_classes(trained_model_path, s1_data_path, norms_path, output_dir_path)
+    
+    print(f'Saved predicted classes in {output_dir_path} directory.')
     
     
     

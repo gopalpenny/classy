@@ -163,6 +163,37 @@ class S1Dataset(Dataset):
     def __len__(self):
         return self.y.shape[0]
     
+    
+# %%
+def scale_model_data(data_path, norms_path, data_name):
+    """
+    Function used to import data and scale it using norms
+    
+    data_path : str
+        - Path to the dataset
+    norms_path : str
+        - path to the norms
+    data_name : str
+        - Currently can only be "s1"
+    """
+    
+    if data_name == 's1':
+                
+        s1_data_orig = torch.load("data/s1_data_prepped.pt")
+        model_norms = torch.load("data/model_data_norms.pt")
+        
+        s1_std = model_norms['s1_col_std'].unsqueeze(0).repeat(s1_data_orig.shape[0],1)
+        
+        s1_means = model_norms['s1_col_means'].unsqueeze(0).repeat(s1_data_orig.shape[0],1)
+
+        s1_data = (s1_data_orig - s1_means)/s1_std
+        
+        return s1_data
+    
+    else:
+        raise Exception('currently data_name can only be "s1"')
+        
+        
 # class s2Dataset(Dataset):
 #     """Sentinel 2 dataset"""
     
