@@ -123,7 +123,46 @@ class TransformerClassifier(nn.Module):
         # data_in = tf_test[:, :, 1:] # select only the data
         # positions = tf_test[:,:,0:1] # split out positional data
         # data_dim = data_in.shape[-1]
-
+        
+        
+# %%
+class S1Dataset(Dataset):
+    """Sentinel 1 dataset"""
+    
+    def __init__(self, s1, y, max_obs_s1):
+        """
+        Args:
+            s1 (tensor): contains loc_id and predictors as columns, s1 observations as rows
+            y (tensor): contains loc_id as rows (& first column), class as 1-hot columns
+        """
+        self.s1 = s1
+        self.y = y
+        self.max_obs_s1 = max_obs_s1
+    
+    def __getitem__(self, idx):
+        # get loc_id
+        loc_id = self.y[idx,0]
+        self.last_loc_id = loc_id
+        
+        # select location id
+        s1_loc = self.s1[self.s1[:,0]==loc_id]
+        s1_prep = s1_loc[:,1:] # remove loc_id column
+        
+        # pad zeros to max_obs
+        n_pad_s1 = self.max_obs_s1 - s1_prep.shape[0]
+        
+        s1 = torch.cat((s1_prep, torch.zeros(n_pad_s1, s1_prep.shape[1])), dim = 0)
+        
+        s1 = s1.float()
+        
+        # get class for the point as tensor
+        y = self.y.clone().detach()[idx,1:].float()
+        
+        return s1, y, loc_id
+        
+    def __len__(self):
+        return self.y.shape[0]
+    
 # class s2Dataset(Dataset):
 #     """Sentinel 2 dataset"""
     
