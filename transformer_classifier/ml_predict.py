@@ -31,8 +31,8 @@ from ml_transformer import TransformerClassifier, S1Dataset
 
 def predict_s1_classes(s1_data_path, trained_model_path, output_dir_path):
     
-    if not os.path.exists(predict_path):
-        os.mkdir(predict_path)
+    if not os.path.exists(output_dir_path):
+        os.mkdir(output_dir_path)
     
     # Load data
     s1_all = torch.load(s1_data_path)
