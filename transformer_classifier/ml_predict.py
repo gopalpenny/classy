@@ -11,6 +11,13 @@ should be contaned in a .pt file as a Tensor, with the following columns:
     
     loc_id, day, VV, VH, angle
     
+After running the following script:
+    
+python train_s1_transformer.py data/s1_data_prepped.pt data/model_data_norms.pt data/model_data_labels.pt s1_train_test
+
+This script can be run to predict the classes of s1_data_prepped.pt as:
+    
+python ml_predict.py s1_train_test/s1_xnn_trained.pt data/s1_data_prepped.pt data/model_data_norms.pt predict_test
 
 """
 
@@ -115,9 +122,9 @@ if __name__ == '__main__':
     else:
         
         trained_model_path = 's1_train/s1_xnn_trained.pt'
+        s1_data_path =  'data/model_data_s1.pt'
         norms_path = "data/model_data_norms.pt"
         output_dir_path = "./predict"
-        s1_data_path =  'data/model_data_s1.pt'
         print(f'For defining custom arguments, specify {num_user_args-1} inputs.')
         print('Using default input arguments:\n')
         
