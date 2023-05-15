@@ -102,7 +102,10 @@ def predict_s1_classes(trained_model_path, s1_data_path, norms_path, output_dir_
         pred_labels = torch.concat((pred_labels, torch.stack((loc_id, pred), dim = 1)))
     
     # %%
+    
     torch.save(pred_labels, os.path.join(output_dir_path, 'predictions.pt'))
+    
+    print(f'Predicted and saved {pred_labels.shape[0]} points to {os.path.join(output_dir_path, "predictions.pt")}')
     
 
 if __name__ == '__main__':
@@ -123,6 +126,8 @@ if __name__ == '__main__':
         
         trained_model_path = 's1_train/s1_xnn_trained.pt'
         s1_data_path =  'data/model_data_s1.pt'
+        # s1_data_path =  's1_train_test/s1_new_66loc.pt'
+
         norms_path = "data/model_data_norms.pt"
         output_dir_path = "./predict"
         print(f'For defining custom arguments, specify {num_user_args-1} inputs.')

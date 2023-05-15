@@ -179,8 +179,8 @@ def scale_model_data(data_path, norms_path, data_name):
     
     if data_name == 's1':
                 
-        s1_data_orig = torch.load("data/s1_data_prepped.pt")
-        model_norms = torch.load("data/model_data_norms.pt")
+        s1_data_orig = torch.load(data_path)
+        model_norms = torch.load(norms_path)
         
         s1_std = model_norms['s1_col_std'].unsqueeze(0).repeat(s1_data_orig.shape[0],1)
         
