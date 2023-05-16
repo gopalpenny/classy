@@ -1,3 +1,4 @@
 **/.ipynb_checkpoints/
 sim/
 __pycache__
+extras/*
