@@ -129,15 +129,22 @@ class TransformerClassifier(nn.Module):
 class S1Dataset(Dataset):
     """Sentinel 1 dataset"""
     
-    def __init__(self, s1, y, max_obs_s1):
+    def __init__(self, s1, y, max_obs_s1, resample_days = False, resample_days_n = 0):
         """
         Args:
             s1 (tensor): contains loc_id and predictors as columns, s1 observations as rows
             y (tensor): contains loc_id as rows (& first column), class as 1-hot columns
+            max_obs_s1: maximum number of observations per location
+            resample_days: if True, resample to day increment given by resample_days_n
+            resample_days_n: The day increment to resample to. If 0, then resample_days_n = ceil(366 / max_obs_s1)
         """
         self.s1 = s1
         self.y = y
         self.max_obs_s1 = max_obs_s1
+        self.resample_days = resample_days
+        if resample_days and resample_days_n == 0:
+            self.resample_days_n = torch.ceil(366 / max_obs_s1)
+
     
     def __getitem__(self, idx):
         # get loc_id
@@ -147,6 +154,14 @@ class S1Dataset(Dataset):
         # select location id
         s1_loc = self.s1[self.s1[:,0]==loc_id]
         s1_prep = s1_loc[:,1:] # remove loc_id column
+
+        if self.max_obs_s1 < s1_prep.shape[0] and self.resample_days:
+
+            days_select = torch.arange(0, 370, self.resample_days_n)
+            s1_prep = resample_id_nearest_days(tensor_full = s1_prep, 
+                                                    days_select = days_select, 
+                                                    id_col = 0, 
+                                                    day_col = 1)
         
         # pad zeros to max_obs
         n_pad_s1 = self.max_obs_s1 - s1_prep.shape[0]
@@ -192,8 +207,64 @@ def scale_model_data(data_path, norms_path, data_name):
     
     else:
         raise Exception('currently data_name can only be "s1"')
+    
+
+# %%
+def resample_nearest_days(tensor_orig, days_select, day_col):
+    """
+    Select rows from tensor orig which are nearest to at least one of the values in days_select
+    days_select : tensor
+        Vector of evenly-spaced days used to select rows from tensor_orig
+    tensor_orig: tensor
+        2D tensor with 1 column being the time variable (i.e., days)
+    day_col : numeric
+        Colum index of tensor_orig containing time variable (days)
+    """
+    days = tensor_orig[:, day_col]
+    
+    # tensor_orig
+    days_mat = torch.unsqueeze(days, 0).repeat(len(days_select), 1) #.shape
+    select_mat = days_select.unsqueeze(1).repeat(1, len(days)) #.shape
+
+    # days_mat #- select_mat
+    nearest = torch.argmin(torch.abs(days_mat - select_mat), dim = 1)
+    # torch.unsqueeze(torch.from_numpy(days_select),1)
+    tensor_resampled = tensor_orig[torch.unique(nearest),:]
+    
+    return tensor_resampled
+    
+def resample_id_nearest_days(tensor_full, days_select, id_col, day_col):
+    """
+    For each id in id_col, use resample_nearest_days to resample days to the closest to days_select
+
+    # Example:
+
+    s1_tensor = torch.zeros(, 2)
+    days_select = torch.arange(0, 370, 6)
+    s1_ts_resampled = resample_id_nearest_days(tensor_full = s1_tensor, 
+                                            days_select = days_select, 
+                                            id_col = 0, 
+                                            day_col = 1)
+    """
+
+    if tensor_full.type() == "torch.HalfTensor":
+        halfTensor = True
+        tensor_full = tensor_full.float()
+    else:
+        halfTensor = False
+    ts_resampled = torch.zeros(0, tensor_full.shape[1])
+    for loc_id in torch.unique(tensor_full[:, id_col]):
+        # print(loc_id)
+        tensor_orig = tensor_full[tensor_full[:, id_col] == loc_id]
         
-        
+        loc_resampled = resample_nearest_days(tensor_orig, days_select, day_col = 1)
+        ts_resampled = torch.concat((ts_resampled, loc_resampled), dim = 0)#.shape
+    
+    if halfTensor:
+        ts_resampled = ts_resampled.half()
+
+    return ts_resampled
+
 # class s2Dataset(Dataset):
 #     """Sentinel 2 dataset"""
     

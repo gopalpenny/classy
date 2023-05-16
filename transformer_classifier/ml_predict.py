@@ -18,7 +18,7 @@ python train_s1_transformer.py data/s1_data_prepped.pt data/model_data_norms.pt 
 This script can be run to predict the classes of s1_data_prepped.pt as:
     
 python ml_predict.py s1_train_test/s1_xnn_trained.pt data/s1_data_prepped.pt data/model_data_norms.pt predict_test
-
+python ml_predict.py s1_train_test/s1_xnn_trained.pt data_ubon/U_U2_S1_16_resamp.pt data/model_data_norms.pt predict_test
 """
 
 # ml_predict.py
@@ -28,7 +28,7 @@ import os
 wds = ["/Users/gopalpenny/Projects/ml/classy/transformer_classifier",
        "/Users/gopal/Projects/ml/classy/transformer_classifier"]
 wd_exists = [x for x in wds if os.path.exists(x)][0]
-# os.chdir(wd_exists)
+os.chdir(wd_exists)
 
 # %%
 import torch
@@ -127,6 +127,7 @@ if __name__ == '__main__':
         trained_model_path = 's1_train/s1_xnn_trained.pt'
         s1_data_path =  'data/model_data_s1.pt'
         # s1_data_path =  's1_train_test/s1_new_66loc.pt'
+        # s1_data_path =  'data_ubon/U_U2_S1_16_resamp.pt'
 
         norms_path = "data/model_data_norms.pt"
         output_dir_path = "./predict"
@@ -137,7 +138,7 @@ if __name__ == '__main__':
     print(f'trained_model_path: {trained_model_path}')
     print(f'output_dir_path: {output_dir_path}\n')
     print('Running predict_s1_classes() function...')
-    # time.sleep(1)
+    time.sleep(1)
     
     predict_s1_classes(trained_model_path, s1_data_path, norms_path, output_dir_path)
     
