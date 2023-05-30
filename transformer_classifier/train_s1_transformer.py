@@ -37,8 +37,9 @@ def train_transformer_s1(s1_data_path, norms_path, labels_path, output_dir_path)
         os.mkdir(output_dir_path)
     
     # %%
-    s1_all = scale_model_data(data_path = "data/s1_data_prepped.pt", 
-                              norms_path = "data/model_data_norms.pt",
+    # Read in Sentinel 1 data and scale based on norms
+    s1_all = scale_model_data(data_path = s1_data_path, 
+                              norms_path = norms_path,
                               data_name = "s1")
     labels = torch.load(labels_path)
     
