@@ -6,3 +6,6 @@
 default_appdata_path.txt
 classapp_old
 launch.json
+transformer_classifier/s1_train/s1_training_loss.png
+transformer_classifier/s1_train/s1_training_metrics.csv
+transformer_classifier/s1_train/s1_xnn_trained.pt
