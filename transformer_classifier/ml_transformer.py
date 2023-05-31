@@ -12,69 +12,69 @@ from torch import nn, Tensor
 
 
 # %%
-class SentinelDatasets(Dataset):
-    """Sentinel 2 dataset"""
+# class SentinelDatasets(Dataset):
+#     """Sentinel 2 dataset"""
     
-    def __init__(self, s1, s2, y, max_obs_s1, max_obs_s2):
-        """
-        Args:
-            s1 (tensor): contains loc_id and predictors as columns, s1 observations as rows
-            s2 (tensor): contains loc_id and predictors as columns, s2 observations as rows
-            y (tensor): contains loc_id as rows (& first column), class as 1-hot columns
-        """
-        self.s1 = s1
-        self.s2 = s2
-        self.y = y
-        self.max_obs_s1 = max_obs_s1
-        self.max_obs_s2 = max_obs_s2
-        # self.proj_path = proj_path
-        # proj_normpath = os.path.normpath(proj_path)
-        # proj_dirname = proj_normpath.split(os.sep)[-1]
-        # self.proj_name = re.sub("_classification$","",proj_dirname)
-        # self.class_path = os.path.join(proj_path, self.proj_name + "_classification")
-        # self.ts_path = os.path.join(proj_path, self.proj_name + "_download_timeseries")
-        # self.pt_classes = pd.read_csv(os.path.join(self.class_path,"location_classification.csv"))
-        # self.pt_classes = classes[['loc_id', class_colname]].dropna()
-        # self.classes = pd.unique(self.pt_classes[class_colname])
-        # self.labels = self.pt_classes.assign(val = 1).pivot_table(columns = class_colname, index = 'loc_id', values = 'val', fill_value= 0)
+#     def __init__(self, s1, s2, y, max_obs_s1, max_obs_s2):
+#         """
+#         Args:
+#             s1 (tensor): contains loc_id and predictors as columns, s1 observations as rows
+#             s2 (tensor): contains loc_id and predictors as columns, s2 observations as rows
+#             y (tensor): contains loc_id as rows (& first column), class as 1-hot columns
+#         """
+#         self.s1 = s1
+#         self.s2 = s2
+#         self.y = y
+#         self.max_obs_s1 = max_obs_s1
+#         self.max_obs_s2 = max_obs_s2
+#         # self.proj_path = proj_path
+#         # proj_normpath = os.path.normpath(proj_path)
+#         # proj_dirname = proj_normpath.split(os.sep)[-1]
+#         # self.proj_name = re.sub("_classification$","",proj_dirname)
+#         # self.class_path = os.path.join(proj_path, self.proj_name + "_classification")
+#         # self.ts_path = os.path.join(proj_path, self.proj_name + "_download_timeseries")
+#         # self.pt_classes = pd.read_csv(os.path.join(self.class_path,"location_classification.csv"))
+#         # self.pt_classes = classes[['loc_id', class_colname]].dropna()
+#         # self.classes = pd.unique(self.pt_classes[class_colname])
+#         # self.labels = self.pt_classes.assign(val = 1).pivot_table(columns = class_colname, index = 'loc_id', values = 'val', fill_value= 0)
 
     
-    def __getitem__(self, idx):
-        # get loc_id
-        loc_id = self.y[idx,0]
-        self.last_loc_id = loc_id
+#     def __getitem__(self, idx):
+#         # get loc_id
+#         loc_id = self.y[idx,0]
+#         self.last_loc_id = loc_id
         
-        # select location id
-        s1_loc = self.s1[self.s1[:,0]==loc_id]
-        s1_prep = s1_loc[:,1:] # remove loc_id column
+#         # select location id
+#         s1_loc = self.s1[self.s1[:,0]==loc_id]
+#         s1_prep = s1_loc[:,1:] # remove loc_id column
         
-        # pad zeros to max_obs
-        n_pad_s1 = self.max_obs_s1 - s1_prep.shape[0]
+#         # pad zeros to max_obs
+#         n_pad_s1 = self.max_obs_s1 - s1_prep.shape[0]
         
-        s1 = torch.cat((s1_prep, torch.zeros(n_pad_s1, s1_prep.shape[1])), dim = 0)
+#         s1 = torch.cat((s1_prep, torch.zeros(n_pad_s1, s1_prep.shape[1])), dim = 0)
         
-        s1 = s1.float()
-        
-        
-        # select location id
-        s2_loc = self.s2[self.s2[:,0]==loc_id]
-        s2_prep = s2_loc[:,1:] # remove loc_id column
-        
-        # pad zeros to max_obs
-        n_pad_s2 = self.max_obs_s2 - s2_prep.shape[0]
-        
-        s2 = torch.cat((s2_prep, torch.zeros(n_pad_s2, s2_prep.shape[1])), dim = 0)
-        
-        s2 = s2.float()
+#         s1 = s1.float()
         
         
-        # get one-hot encoding for the point as tensor
-        y = self.y.clone().detach()[idx,1:].float()
+#         # select location id
+#         s2_loc = self.s2[self.s2[:,0]==loc_id]
+#         s2_prep = s2_loc[:,1:] # remove loc_id column
         
-        return s1, s2, y, loc_id
+#         # pad zeros to max_obs
+#         n_pad_s2 = self.max_obs_s2 - s2_prep.shape[0]
         
-    def __len__(self):
-        return self.y.shape[0]
+#         s2 = torch.cat((s2_prep, torch.zeros(n_pad_s2, s2_prep.shape[1])), dim = 0)
+        
+#         s2 = s2.float()
+        
+        
+#         # get one-hot encoding for the point as tensor
+#         y = self.y.clone().detach()[idx,1:].float()
+        
+#         return s1, s2, y, loc_id
+        
+#     def __len__(self):
+#         return self.y.shape[0]
     
     
 class TransformerClassifier(nn.Module):
@@ -124,7 +124,74 @@ class TransformerClassifier(nn.Module):
         # positions = tf_test[:,:,0:1] # split out positional data
         # data_dim = data_in.shape[-1]
         
+# %%
+class SentinelDatasets(Dataset):
+    """Sentinel 1 & 2 dataset"""
+    
+    def __init__(self, s1, s2, y, max_obs_s1, max_obs_s2, resample_days = False, resample_days_n = 0):
+        """
+        Args:
+            s1 (tensor): contains loc_id and predictors as columns, s1 observations as rows
+            y (tensor): contains loc_id as rows (& first column), class as 1-hot columns
+            max_obs_s1: maximum number of observations per location
+            resample_days: if True, resample to day increment given by resample_days_n
+            resample_days_n: The day increment to resample to. If 0, then resample_days_n = ceil(366 / max_obs_s1)
+        """
+        self.s1 = s1
+        self.s2 = s2
+        self.y = y
+        self.max_obs_s1 = max_obs_s1
+        self.max_obs_s2 = max_obs_s2
+        self.resample_days = resample_days
+        if resample_days and resample_days_n == 0:
+            self.resample_days_n = torch.ceil(366 / max_obs_s1)
+
+    
+    def __getitem__(self, idx):
+        # get loc_id
+        loc_id = self.y[idx,0]
+        self.last_loc_id = loc_id
         
+        # s1: select location id
+        s1_loc = self.s1[self.s1[:,0]==loc_id]
+        s1_prep = s1_loc[:,1:] # remove loc_id column
+
+        if self.max_obs_s1 < s1_prep.shape[0] and self.resample_days:
+
+            days_select = torch.arange(0, 370, self.resample_days_n)
+            s1_prep = resample_id_nearest_days(tensor_full = s1_prep, 
+                                                    days_select = days_select, 
+                                                    id_col = 0, 
+                                                    day_col = 1)
+        # s2: select location id
+        s2_loc = self.s2[self.s2[:,0]==loc_id]
+        s2_prep = s2_loc[:,1:] # remove loc_id column
+
+        if self.max_obs_s2 < s2_prep.shape[0] and self.resample_days:
+
+            days_select = torch.arange(0, 370, self.resample_days_n)
+            s2_prep = resample_id_nearest_days(tensor_full = s2_prep, 
+                                                    days_select = days_select, 
+                                                    id_col = 0, 
+                                                    day_col = 1)
+        
+        # pad zeros to max_obs and ensure float
+        n_pad_s1 = self.max_obs_s1 - s1_prep.shape[0]
+        s1 = torch.cat((s1_prep, torch.zeros(n_pad_s1, s1_prep.shape[1])), dim = 0)
+        s1 = s1.float()
+
+        n_pad_s2 = self.max_obs_s2 - s2_prep.shape[0]
+        s2 = torch.cat((s2_prep, torch.zeros(n_pad_s2, s2_prep.shape[1])), dim = 0)
+        s2 = s2.float()
+
+        # get class for the point as tensor
+        y = self.y.clone().detach()[idx,1:].float()
+        
+        return s1, s2, y, loc_id
+        
+    def __len__(self):
+        return self.y.shape[0]
+    
 # %%
 class S1Dataset(Dataset):
     """Sentinel 1 dataset"""
@@ -163,11 +230,9 @@ class S1Dataset(Dataset):
                                                     id_col = 0, 
                                                     day_col = 1)
         
-        # pad zeros to max_obs
+        # pad zeros to max_obs and ensure float
         n_pad_s1 = self.max_obs_s1 - s1_prep.shape[0]
-        
         s1 = torch.cat((s1_prep, torch.zeros(n_pad_s1, s1_prep.shape[1])), dim = 0)
-        
         s1 = s1.float()
         
         # get class for the point as tensor

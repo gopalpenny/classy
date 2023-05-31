@@ -143,13 +143,14 @@ def train_transformer_s1(s1_data_path, norms_path, labels_path, output_dir_path)
     for epoch in range(n_epochs):
         counter = 0
         xnn.train()
-        for x_batch, y_batch, _ in train_dl:
+        for x_batch, y_batch, loc_id in train_dl:
             
             # Forward pass
             pred = xnn(x_batch)
             
             y_batch = y_batch.flatten().type(torch.LongTensor)
-            
+            # print(y_batch)
+
             # print first tensor for debugging
             # if epoch == 0 and counter == 0:
             #     print(pred)
@@ -161,14 +162,15 @@ def train_transformer_s1(s1_data_path, norms_path, labels_path, output_dir_path)
             
             # Accumulate loss and accuracy
             loss_hist_train[epoch] += loss.item() * y_batch.size(0)
-            
+            # print(f'counter: {counter} loc_id: {loc_id}: {loss.item()} pred: {pred} y_batch: {y_batch}')
             accuracy_hist_train[epoch] += get_num_correct(pred, y_batch)
     
             # Backward and optimize
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-            
+            counter +=1   
+        
         loss_hist_train[epoch] /= float(len(train_dl.dataset))
         accuracy_hist_train[epoch] /= float(len(train_dl.dataset))
         

@@ -9,3 +9,9 @@ launch.json
 transformer_classifier/s1_train/s1_training_loss.png
 transformer_classifier/s1_train/s1_training_metrics.csv
 transformer_classifier/s1_train/s1_xnn_trained.pt
+transformer_classifier/ubon_data/testing_ubon_data
+transformer_classifier/ubon_data/recheckingin/model_data_labels_new.pt
+transformer_classifier/ubon_data/recheckingin/run_train_s1.py
+transformer_classifier/ubon_data/recheckingin/train_s1_transformer.py
+transformer_classifier/ubon_data/recheckingin/U_U2_S1_32_RS.pt
+transformer_classifier/ubon_data/recheckingin/U_U2_S2_32_B8432_RSN_1122.pt
