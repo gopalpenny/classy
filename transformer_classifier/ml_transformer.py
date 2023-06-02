@@ -75,67 +75,168 @@ from torch import nn, Tensor
         
 #     def __len__(self):
 #         return self.y.shape[0]
-    
-    
-class TransformerClassifier(nn.Module):
-    def __init__(self, ntoken: int, dmodel: int, nhead: int, dhid: int, 
-                 nlayers: int, data_dim: int, nclasses: int):
-        """
-        data_dim: dimension of data (i.e., num of columns) including position as first dimension (but not loc_id)
-        """
+
+class SentinelDataModule(nn.Module):
+    def __init__(self, data_dim, dmodel):
         super().__init__()
         self.positional_layer = nn.Linear(1, dmodel)
-        self.embed_layer = nn.Linear(data_dim - 1, dmodel) # transform data to embed dimension (dmodel)
-        
-        # dim_feedforward: https://stackoverflow.com/questions/68087780/pytorch-transformer-argument-dim-feedforward
-        # shortly: dim_feedforward is a hidden layer between two forward layers at the end of the encoder layer, passed for each word one-by-one
-        self.encoderlayer = nn.TransformerEncoderLayer(d_model = dmodel, nhead = nhead, dim_feedforward = dhid)
-        self.encoder = nn.TransformerEncoder(self.encoderlayer, nlayers)
-        
-        self.num_params = ntoken * dmodel
-        
-        self.class_encoder = nn.Linear(dmodel, nclasses)
+        self.embed_layer = nn.Linear(data_dim - 1, dmodel)
     
     def forward(self, src: Tensor) -> Tensor:
-        
         positions = src[:, :, 0:1]
         data = src[:, :, 1:]
         pe = self.positional_layer(positions)
         data_embed = self.embed_layer(data)
         data_and_pe = pe + data_embed
+        return data_and_pe
+    
+class TransformerClassifierS1S2(nn.Module):
+    def __init__(self, ntoken: int, dmodel_s1: int, dmodel_s2: int, nhead: int, dhid: int, 
+                 nlayers: int, s1_dim: int, s2_dim: int, nclasses: int):
+        """
+        dmodel_s1: maximum number of rows for s1 data
+        dmodel_s2: maximum number of rows for s2 data
+        nhead: number of heads in the multiheadattention model
+        dhid: dimension of the feedforward network model
+        nlayers: number of encoder layers in the transformer model
+        s1_dim: dimension of s1 data (i.e., num of columns) including position as first dimension (but not loc_id)
+        s2_dim: dimension of s2 data (i.e., num of columns) including position as first dimension (but not loc_id)
+        nclasses: number of classes to calculate probabilities for
+
+        Can set dmodel_s1 to zero, or dmodel_s2 to zero if it is not desired
+        """
+        super().__init__()
+
+        # for positional and data embedding
+        self.s1nn = SentinelDataModule(data_dim = s1_dim, dmodel = dmodel_s1)
+        self.s2nn = SentinelDataModule(data_dim = s2_dim, dmodel = dmodel_s2)
+
+        self.dmodel_s1 = dmodel_s1
+        self.dmodel_s2 = dmodel_s2
+        self.dmodel = dmodel_s1 + dmodel_s2
+        
+        # dim_feedforward: https://stackoverflow.com/questions/68087780/pytorch-transformer-argument-dim-feedforward
+        # shortly: dim_feedforward is a hidden layer between two forward layers at the end of the encoder layer, passed for each word one-by-one
+        self.encoderlayer = nn.TransformerEncoderLayer(d_model = self.dmodel, nhead = nhead, dim_feedforward = dhid)
+        self.encoder = nn.TransformerEncoder(self.encoderlayer, nlayers)
+        
+        self.num_params = ntoken * self.dmodel
+        
+        self.class_encoder = nn.Linear(self.dmodel, nclasses)
+    
+    def forward(self, s1: Tensor, s2: Tensor) -> Tensor:
+        
+        if self.dmodel_s1 > 0:
+            s1_data_and_pe = self.s1nn(s1)
+        
+        if self.dmodel_s2 > 0:
+            s2_data_and_pe = self.s2nn(s2)
+
+        if self.dmodel_s1 > 0 and self.dmodel_s2 == 0:
+            data_and_pe = s1_data_and_pe
+        elif self.dmodel_s1 == 0 and self.dmodel_s2 > 0:
+            data_and_pe = s2_data_and_pe
+        else:
+            data_and_pe = torch.cat((s1_data_and_pe, s2_data_and_pe), dim = 1)
+        
         encoder_out = self.encoder(data_and_pe)
         
-        maxpool = torch.max(encoder_out,dim = 1)[0]
+        maxpool = torch.max(encoder_out, dim = 1)[0]
         
         # softmax ensures output of model is probability of class membership -- which sum to 1
         # BUT this is already done with CrossEntropyLoss so it's not necessary for this loss function
-        classes_one_hot = self.class_encoder(maxpool) #, dim = 1
+        class_likelihood = self.class_encoder(maxpool) #, dim = 1
         
-        
-        classes = classes_one_hot #torch.softmax(classes_one_hot, 0)
+        classes = class_likelihood #torch.softmax(classes_one_hot, 0)
         
         # classes = nn.functional.softmax(classes, 1) # don't use softmax with cross entropy loss... or do?
         # don't: https://stackoverflow.com/questions/55675345/should-i-use-softmax-as-output-when-using-cross-entropy-loss-in-pytorch
         # do: Machine Learning with Pytorch and Scikitlearn (p 471: Loss functions for classifiers) -- BUT NOT WITH CROSS ENTROPY LOSS (p478
         
         return classes
+    
+# class TransformerClassifierS1(nn.Module):
+#     def __init__(self, ntoken: int, dmodel: int, nhead: int, dhid: int, 
+#                  nlayers: int, data_dim: int, nclasses: int):
+#         """
+#         data_dim: dimension of data (i.e., num of columns) including position as first dimension (but not loc_id)
+#         """
+#         super().__init__()
+#         self.positional_layer = nn.Linear(1, dmodel)
+#         self.embed_layer = nn.Linear(data_dim - 1, dmodel) # transform data to embed dimension (dmodel)
+        
+#         # dim_feedforward: https://stackoverflow.com/questions/68087780/pytorch-transformer-argument-dim-feedforward
+#         # shortly: dim_feedforward is a hidden layer between two forward layers at the end of the encoder layer, passed for each word one-by-one
+#         self.encoderlayer = nn.TransformerEncoderLayer(d_model = dmodel, nhead = nhead, dim_feedforward = dhid)
+#         self.encoder = nn.TransformerEncoder(self.encoderlayer, nlayers)
+        
+#         self.num_params = ntoken * dmodel
+        
+#         self.class_encoder = nn.Linear(dmodel, nclasses)
+    
+#     def forward(self, src: Tensor) -> Tensor:
+        
+#         positions = src[:, :, 0:1]
+#         data = src[:, :, 1:]
+#         pe = self.positional_layer(positions)
+#         data_embed = self.embed_layer(data)
+#         data_and_pe = pe + data_embed
+#         encoder_out = self.encoder(data_and_pe)
+        
+#         maxpool = torch.max(encoder_out,dim = 1)[0]
+        
+#         # softmax ensures output of model is probability of class membership -- which sum to 1
+#         # BUT this is already done with CrossEntropyLoss so it's not necessary for this loss function
+#         classes_one_hot = self.class_encoder(maxpool) #, dim = 1
+        
+        
+#         classes = classes_one_hot #torch.softmax(classes_one_hot, 0)
+        
+#         # classes = nn.functional.softmax(classes, 1) # don't use softmax with cross entropy loss... or do?
+#         # don't: https://stackoverflow.com/questions/55675345/should-i-use-softmax-as-output-when-using-cross-entropy-loss-in-pytorch
+#         # do: Machine Learning with Pytorch and Scikitlearn (p 471: Loss functions for classifiers) -- BUT NOT WITH CROSS ENTROPY LOSS (p478
+        
+#         return classes
 
-        # data_in = tf_test[:, :, 1:] # select only the data
-        # positions = tf_test[:,:,0:1] # split out positional data
-        # data_dim = data_in.shape[-1]
+#         # data_in = tf_test[:, :, 1:] # select only the data
+#         # positions = tf_test[:,:,0:1] # split out positional data
+#         # data_dim = data_in.shape[-1]
         
 # %%
-class SentinelDatasets(Dataset):
+def getitem_sentinel_data(s_data, loc_id, max_obs_s, resample_days, resample_days_n):
+
+    # select location id
+    s_loc = s_data[s_data[:,0]==loc_id]
+    s_prep = s_loc[:,1:] # remove loc_id column
+
+    # resample days if max_obs_s is less than number of observations
+    if max_obs_s < s_prep.shape[0] and resample_days:
+
+        days_select = torch.arange(0, 370, resample_days_n)
+        s_prep = resample_id_nearest_days(tensor_full = s_prep, 
+                                                days_select = days_select, 
+                                                id_col = 0, 
+                                                day_col = 1)
+    
+    # pad zeros to max_obs and ensure float
+    n_pad_s = max_obs_s - s_prep.shape[0]
+    s = torch.cat((s_prep, torch.zeros(n_pad_s, s_prep.shape[1])), dim = 0)
+    s = s.float()
+
+
+class SentinelDataset(Dataset):
     """Sentinel 1 & 2 dataset"""
     
-    def __init__(self, s1, s2, y, max_obs_s1, max_obs_s2, resample_days = False, resample_days_n = 0):
+    def __init__(self, y, s1 = None, s2 = None, max_obs_s1 = None, max_obs_s2 = None, resample_days = False, resample_days_n = 0):
         """
         Args:
             s1 (tensor): contains loc_id and predictors as columns, s1 observations as rows
+            s2 (tensor): contains loc_id and predictors as columns, s2 observations as rows
             y (tensor): contains loc_id as rows (& first column), class as 1-hot columns
             max_obs_s1: maximum number of observations per location
+            max_obs_s2: maximum number of observations per location
             resample_days: if True, resample to day increment given by resample_days_n
-            resample_days_n: The day increment to resample to. If 0, then resample_days_n = ceil(366 / max_obs_s1)
+            resample_days_n: The day increment to resample to. If 0, then resample_days_n = ceil(366 / max_obs_sx)
         """
         self.s1 = s1
         self.s2 = s2
@@ -151,97 +252,78 @@ class SentinelDatasets(Dataset):
         # get loc_id
         loc_id = self.y[idx,0]
         self.last_loc_id = loc_id
-        
-        # s1: select location id
-        s1_loc = self.s1[self.s1[:,0]==loc_id]
-        s1_prep = s1_loc[:,1:] # remove loc_id column
-
-        if self.max_obs_s1 < s1_prep.shape[0] and self.resample_days:
-
-            days_select = torch.arange(0, 370, self.resample_days_n)
-            s1_prep = resample_id_nearest_days(tensor_full = s1_prep, 
-                                                    days_select = days_select, 
-                                                    id_col = 0, 
-                                                    day_col = 1)
-        # s2: select location id
-        s2_loc = self.s2[self.s2[:,0]==loc_id]
-        s2_prep = s2_loc[:,1:] # remove loc_id column
-
-        if self.max_obs_s2 < s2_prep.shape[0] and self.resample_days:
-
-            days_select = torch.arange(0, 370, self.resample_days_n)
-            s2_prep = resample_id_nearest_days(tensor_full = s2_prep, 
-                                                    days_select = days_select, 
-                                                    id_col = 0, 
-                                                    day_col = 1)
-        
-        # pad zeros to max_obs and ensure float
-        n_pad_s1 = self.max_obs_s1 - s1_prep.shape[0]
-        s1 = torch.cat((s1_prep, torch.zeros(n_pad_s1, s1_prep.shape[1])), dim = 0)
-        s1 = s1.float()
-
-        n_pad_s2 = self.max_obs_s2 - s2_prep.shape[0]
-        s2 = torch.cat((s2_prep, torch.zeros(n_pad_s2, s2_prep.shape[1])), dim = 0)
-        s2 = s2.float()
 
         # get class for the point as tensor
         y = self.y.clone().detach()[idx,1:].float()
+
+        if self.s1 is not None:
+            s1 = getitem_sentinel_data(s_data = self.s1, loc_id = loc_id, max_obs_s = self.max_obs_s1,
+                                       resample_days = self.resample_days, resample_days_n = self.resample_days_n)
         
-        return s1, s2, y, loc_id
+        if self.s2 is not None:
+            s2 = getitem_sentinel_data(s_data = self.s2, loc_id = loc_id, max_obs_s = self.max_obs_s2,
+                                       resample_days = self.resample_days, resample_days_n = self.resample_days_n)
+        
+        if ((self.s1 is not None) and (self.s2 is None)):
+            return s1, y, loc_id
+        elif ((self.s1 is None) and (self.s2 is not None)):
+            return s2, y, loc_id
+        else:
+            return s1, s2, y, loc_id
         
     def __len__(self):
         return self.y.shape[0]
     
-# %%
-class S1Dataset(Dataset):
-    """Sentinel 1 dataset"""
+# # %%
+# class S1Dataset(Dataset):
+#     """Sentinel 1 dataset"""
     
-    def __init__(self, s1, y, max_obs_s1, resample_days = False, resample_days_n = 0):
-        """
-        Args:
-            s1 (tensor): contains loc_id and predictors as columns, s1 observations as rows
-            y (tensor): contains loc_id as rows (& first column), class as 1-hot columns
-            max_obs_s1: maximum number of observations per location
-            resample_days: if True, resample to day increment given by resample_days_n
-            resample_days_n: The day increment to resample to. If 0, then resample_days_n = ceil(366 / max_obs_s1)
-        """
-        self.s1 = s1
-        self.y = y
-        self.max_obs_s1 = max_obs_s1
-        self.resample_days = resample_days
-        if resample_days and resample_days_n == 0:
-            self.resample_days_n = torch.ceil(366 / max_obs_s1)
+#     def __init__(self, s1, y, max_obs_s1, resample_days = False, resample_days_n = 0):
+#         """
+#         Args:
+#             s1 (tensor): contains loc_id and predictors as columns, s1 observations as rows
+#             y (tensor): contains loc_id as rows (& first column), class as 1-hot columns
+#             max_obs_s1: maximum number of observations per location
+#             resample_days: if True, resample to day increment given by resample_days_n
+#             resample_days_n: The day increment to resample to. If 0, then resample_days_n = ceil(366 / max_obs_s1)
+#         """
+#         self.s1 = s1
+#         self.y = y
+#         self.max_obs_s1 = max_obs_s1
+#         self.resample_days = resample_days
+#         if resample_days and resample_days_n == 0:
+#             self.resample_days_n = torch.ceil(366 / max_obs_s1)
 
     
-    def __getitem__(self, idx):
-        # get loc_id
-        loc_id = self.y[idx,0]
-        self.last_loc_id = loc_id
+#     def __getitem__(self, idx):
+#         # get loc_id
+#         loc_id = self.y[idx,0]
+#         self.last_loc_id = loc_id
         
-        # select location id
-        s1_loc = self.s1[self.s1[:,0]==loc_id]
-        s1_prep = s1_loc[:,1:] # remove loc_id column
+#         # select location id
+#         s1_loc = self.s1[self.s1[:,0]==loc_id]
+#         s1_prep = s1_loc[:,1:] # remove loc_id column
 
-        if self.max_obs_s1 < s1_prep.shape[0] and self.resample_days:
+#         if self.max_obs_s1 < s1_prep.shape[0] and self.resample_days:
 
-            days_select = torch.arange(0, 370, self.resample_days_n)
-            s1_prep = resample_id_nearest_days(tensor_full = s1_prep, 
-                                                    days_select = days_select, 
-                                                    id_col = 0, 
-                                                    day_col = 1)
+#             days_select = torch.arange(0, 370, self.resample_days_n)
+#             s1_prep = resample_id_nearest_days(tensor_full = s1_prep, 
+#                                                     days_select = days_select, 
+#                                                     id_col = 0, 
+#                                                     day_col = 1)
         
-        # pad zeros to max_obs and ensure float
-        n_pad_s1 = self.max_obs_s1 - s1_prep.shape[0]
-        s1 = torch.cat((s1_prep, torch.zeros(n_pad_s1, s1_prep.shape[1])), dim = 0)
-        s1 = s1.float()
+#         # pad zeros to max_obs and ensure float
+#         n_pad_s1 = self.max_obs_s1 - s1_prep.shape[0]
+#         s1 = torch.cat((s1_prep, torch.zeros(n_pad_s1, s1_prep.shape[1])), dim = 0)
+#         s1 = s1.float()
         
-        # get class for the point as tensor
-        y = self.y.clone().detach()[idx,1:].float()
+#         # get class for the point as tensor
+#         y = self.y.clone().detach()[idx,1:].float()
         
-        return s1, y, loc_id
+#         return s1, y, loc_id
         
-    def __len__(self):
-        return self.y.shape[0]
+#     def __len__(self):
+#         return self.y.shape[0]
     
     
 # %%
