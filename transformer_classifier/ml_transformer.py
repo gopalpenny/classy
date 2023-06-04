@@ -103,7 +103,7 @@ class TransformerClassifier(nn.Module):
         s2_dim: dimension of s2 data (i.e., num of columns) including position as first dimension (but not loc_id)
         nclasses: number of classes to calculate probabilities for
 
-        Can set dmodel_s1 to zero, or dmodel_s2 to zero if it is not desired
+        Can set s1_dim to zero, or s2_dim to zero and it will only use the other data
         """
         super().__init__()
 
