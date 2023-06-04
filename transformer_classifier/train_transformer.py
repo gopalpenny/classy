@@ -37,23 +37,14 @@ from ml_transformer import TransformerClassifier, SentinelDataset, scale_model_d
 # %%
 def train_transformer_func(s1_data_path, s2_data_path, norms_path, labels_path, output_dir_path):
 
+    # %%
     if not os.path.exists(output_dir_path):
         os.mkdir(output_dir_path)
+    
+    # %%
 
-    # Read in Sentinel 1 data and scale based on norms
-    s1_all = scale_model_data(data_path = s1_data_path, 
-                                norms_path = norms_path,
-                                data_name = "s1")
-    s2_all = scale_model_data(data_path = s2_data_path,
-                                norms_path = norms_path,
-                                data_name = "s2")
     labels = torch.load(labels_path)
 
-    # %%
-    # s1_all_old = torch.load(os.path.join(data_path, 'model_data_s1.pt'))
-    # torch.equal(s1_all, s1_all_old)
-
-    # %%
     y_train, y_eval = train_test_split(labels, train_size = 0.8, stratify = labels[:, 1])
     y_valid, y_test = train_test_split(y_eval, train_size = 0.5, stratify = y_eval[:, 1])
 
@@ -63,14 +54,35 @@ def train_transformer_func(s1_data_path, s2_data_path, norms_path, labels_path, 
 
     # %%
 
-    # Split training X values
-    s1_train = s1_all[np.isin(s1_all[:, 0], y_train[:,0])]
-    s1_valid = s1_all[np.isin(s1_all[:, 0], y_valid[:,0])]
-    s1_test = s1_all[np.isin(s1_all[:, 0], y_test[:,0])]
+    if s1_data_path is not None:
+        # Read in Sentinel 1 data and scale based on norms
+        s1_all = scale_model_data(data_path = s1_data_path, 
+                                    norms_path = norms_path,
+                                    data_name = "s1")
+        
+        # Split training X values
+        s1_train = s1_all[np.isin(s1_all[:, 0], y_train[:,0])]
+        s1_valid = s1_all[np.isin(s1_all[:, 0], y_valid[:,0])]
+        s1_test = s1_all[np.isin(s1_all[:, 0], y_test[:,0])]
+    else:
+        s1_train = None
+        s1_valid = None
+        s1_test = None
 
-    s2_train = s2_all[np.isin(s2_all[:, 0], y_train[:,0])]
-    s2_valid = s2_all[np.isin(s2_all[:, 0], y_valid[:,0])]
-    s2_test = s2_all[np.isin(s2_all[:, 0], y_test[:,0])]
+    
+    if s2_data_path is not None:
+
+        s2_all = scale_model_data(data_path = s2_data_path,
+                                    norms_path = norms_path,
+                                    data_name = "s2")
+
+        s2_train = s2_all[np.isin(s2_all[:, 0], y_train[:,0])]
+        s2_valid = s2_all[np.isin(s2_all[:, 0], y_valid[:,0])]
+        s2_test = s2_all[np.isin(s2_all[:, 0], y_test[:,0])]
+    else:
+        s2_train = None
+        s2_valid = None
+        s2_test = None
 
     # %%
 
