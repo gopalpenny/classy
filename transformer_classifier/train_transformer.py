@@ -30,12 +30,12 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-import importlib
-importlib.reload(sys.modules['ml_transformer'])
+# import importlib
+# importlib.reload(sys.modules['ml_transformer'])
 from ml_transformer import TransformerClassifier, SentinelDataset, scale_model_data
 
 # %%
-def train_transformer_s1(s1_data_path, s2_data_path, norms_path, labels_path, output_dir_path):
+def train_transformer_func(s1_data_path, s2_data_path, norms_path, labels_path, output_dir_path):
 
     if not os.path.exists(output_dir_path):
         os.mkdir(output_dir_path)
@@ -175,10 +175,10 @@ def train_transformer_s1(s1_data_path, s2_data_path, norms_path, labels_path, ou
     for epoch in range(n_epochs):
         counter = 0
         xnn.train()
-        for x_batch, y_batch, loc_id in train_dl:
+        for s1_batch, s2_batch, y_batch, loc_id in train_dl:
             
             # Forward pass
-            pred = xnn(x_batch)
+            pred = xnn(s1_batch, s2_batch)
             
             y_batch = y_batch.flatten().type(torch.LongTensor)
             # print(y_batch)
@@ -207,10 +207,10 @@ def train_transformer_s1(s1_data_path, s2_data_path, norms_path, labels_path, ou
         accuracy_hist_train[epoch] /= float(len(train_dl.dataset))
         
         with torch.no_grad():
-            for x_batch, y_batch, _ in valid_dl:
+            for s1_batch, s2_batch, y_batch, _ in valid_dl:
 
                 # Forward pass
-                pred = xnn(x_batch)
+                pred = xnn(s1_batch, s2_batch)
                 
                 y_batch = y_batch.flatten().type(torch.LongTensor)
                 
@@ -232,10 +232,10 @@ def train_transformer_s1(s1_data_path, s2_data_path, norms_path, labels_path, ou
     loss_hist_test = 0
     accuracy_hist_test = 0
     with torch.no_grad():
-        for x_batch, y_batch, _ in test_dl:
+        for s1_batch, s2_batch, y_batch, _ in test_dl:
 
             # Forward pass
-            pred = xnn(x_batch)
+            pred = xnn(s1_batch, s2_batch)
             
             y_batch = y_batch.flatten().type(torch.LongTensor)
             
