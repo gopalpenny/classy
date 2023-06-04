@@ -8,8 +8,10 @@ Created on Sat Jan 14 19:18:30 2023
 
 # %%
 import os
-# os.chdir("/Users/gopalpenny/Projects/ml/classy/classapp/transformer_classifier")
-# os.chdir("/Users/gopal/Projects/ml/classy/classapp/transformer_classifier")
+wds = ["/Users/gopalpenny/Projects/ml/classy/transformer_classifier",
+       "/Users/gopal/Projects/ml/classy/transformer_classifier"]
+wd_exists = [x for x in wds if os.path.exists(x)][0]
+# os.chdir(wd_exists)
 
 # %%
 import torch
