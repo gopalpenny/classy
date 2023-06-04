@@ -226,28 +226,17 @@ def getitem_sentinel_data(s_data, loc_id, max_obs_s, resample_days, resample_day
 class SentinelDataset(Dataset):
     """Sentinel 1 & 2 dataset"""
     
-    def __init__(self, y, s1 = None, s2 = None, max_obs_s1 = None, max_obs_s2 = None, resample_days = False, resample_days_n = 0):
+    def __init__(self, y, s1 = None, s2 = None):
         """
         Args:
             s1 (tensor): contains loc_id and predictors as columns, s1 observations as rows
             s2 (tensor): contains loc_id and predictors as columns, s2 observations as rows
             y (tensor): contains loc_id as rows (& first column), class as 1-hot columns
-            max_obs_s1: maximum number of observations per location
-            max_obs_s2: maximum number of observations per location
-            resample_days: if True, resample to day increment given by resample_days_n
-            resample_days_n: The day increment to resample to. If 0, then resample_days_n = ceil(366 / max_obs_sx)
         """
         self.s1 = s1
         self.s2 = s2
         self.y = y
-        self.max_obs_s1 = max_obs_s1
-        self.max_obs_s2 = max_obs_s2
-        self.resample_days = resample_days
-        self.resample_days_n = resample_days_n
-        if resample_days and resample_days_n == 0:
-            self.resample_days_n = torch.ceil(366 / max_obs_s1)
 
-    
     def __getitem__(self, idx):
         # get loc_id
         loc_id = self.y[idx,0]
