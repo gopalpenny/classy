@@ -90,12 +90,12 @@ class SentinelDataModule(nn.Module):
         data_and_pe = pe + data_embed
         return data_and_pe
     
-class TransformerClassifierS1S2(nn.Module):
-    def __init__(self, ntoken: int, dmodel_s1: int, dmodel_s2: int, nhead: int, dhid: int, 
+class TransformerClassifier(nn.Module):
+    def __init__(self, dmodel: int, nhead: int, dhid: int, 
                  nlayers: int, s1_dim: int, s2_dim: int, nclasses: int):
         """
-        dmodel_s1: maximum number of rows for s1 data
-        dmodel_s2: maximum number of rows for s2 data
+        ntoken: number of tokens
+        dmodel: the number of features (columns) in the transformer input
         nhead: number of heads in the multiheadattention model
         dhid: dimension of the feedforward network model
         nlayers: number of encoder layers in the transformer model
@@ -108,33 +108,32 @@ class TransformerClassifierS1S2(nn.Module):
         super().__init__()
 
         # for positional and data embedding
-        self.s1nn = SentinelDataModule(data_dim = s1_dim, dmodel = dmodel_s1)
-        self.s2nn = SentinelDataModule(data_dim = s2_dim, dmodel = dmodel_s2)
-
-        self.dmodel_s1 = dmodel_s1
-        self.dmodel_s2 = dmodel_s2
-        self.dmodel = dmodel_s1 + dmodel_s2
+        self.s1nn = SentinelDataModule(data_dim = s1_dim, dmodel = dmodel)
+        self.s2nn = SentinelDataModule(data_dim = s2_dim, dmodel = dmodel)
+        self.dmodel = dmodel
+        self.s1_dim = s1_dim
+        self.s2_dim = s2_dim
         
         # dim_feedforward: https://stackoverflow.com/questions/68087780/pytorch-transformer-argument-dim-feedforward
         # shortly: dim_feedforward is a hidden layer between two forward layers at the end of the encoder layer, passed for each word one-by-one
         self.encoderlayer = nn.TransformerEncoderLayer(d_model = self.dmodel, nhead = nhead, dim_feedforward = dhid)
         self.encoder = nn.TransformerEncoder(self.encoderlayer, nlayers)
         
-        self.num_params = ntoken * self.dmodel
+        # self.num_params = ntoken * self.dmodel
         
         self.class_encoder = nn.Linear(self.dmodel, nclasses)
     
     def forward(self, s1: Tensor, s2: Tensor) -> Tensor:
         
-        if self.dmodel_s1 > 0:
+        if self.s1_dim > 0:
             s1_data_and_pe = self.s1nn(s1)
         
-        if self.dmodel_s2 > 0:
+        if self.s2_dim > 0:
             s2_data_and_pe = self.s2nn(s2)
 
-        if self.dmodel_s1 > 0 and self.dmodel_s2 == 0:
+        if self.s1_dim > 0 and self.s2_dim == 0:
             data_and_pe = s1_data_and_pe
-        elif self.dmodel_s1 == 0 and self.dmodel_s2 > 0:
+        elif self.s1_dim == 0 and self.s2_dim > 0:
             data_and_pe = s2_data_and_pe
         else:
             data_and_pe = torch.cat((s1_data_and_pe, s2_data_and_pe), dim = 1)
@@ -244,6 +243,7 @@ class SentinelDataset(Dataset):
         self.max_obs_s1 = max_obs_s1
         self.max_obs_s2 = max_obs_s2
         self.resample_days = resample_days
+        self.resample_days_n = resample_days_n
         if resample_days and resample_days_n == 0:
             self.resample_days_n = torch.ceil(366 / max_obs_s1)
 
@@ -257,12 +257,18 @@ class SentinelDataset(Dataset):
         y = self.y.clone().detach()[idx,1:].float()
 
         if self.s1 is not None:
-            s1 = getitem_sentinel_data(s_data = self.s1, loc_id = loc_id, max_obs_s = self.max_obs_s1,
-                                       resample_days = self.resample_days, resample_days_n = self.resample_days_n)
+            # select location id and remove loc_id column
+            s1 = self.s1[self.s1[:,0]==loc_id, 1:]
+            s1 = s1.float()
+            # s1 = getitem_sentinel_data(s_data = self.s1, loc_id = loc_id, max_obs_s = self.max_obs_s1,
+            #                            resample_days = self.resample_days, resample_days_n = self.resample_days_n)
         
         if self.s2 is not None:
-            s2 = getitem_sentinel_data(s_data = self.s2, loc_id = loc_id, max_obs_s = self.max_obs_s2,
-                                       resample_days = self.resample_days, resample_days_n = self.resample_days_n)
+            # select location id and remove loc_id column
+            s2 = self.s2[self.s2[:,0]==loc_id, 1:] 
+            s2 = s2.float()
+            # s2 = getitem_sentinel_data(s_datssa = self.s2, loc_id = loc_id, max_obs_s = self.max_obs_s2,
+            #                            resample_days = self.resample_days, resample_days_n = self.resample_days_n)
         
         if ((self.s1 is not None) and (self.s2 is None)):
             return s1, y, loc_id
@@ -325,7 +331,10 @@ class SentinelDataset(Dataset):
 #     def __len__(self):
 #         return self.y.shape[0]
     
-    
+
+# %%
+data_path = './data/model_data_norms.pt'
+
 # %%
 def scale_model_data(data_path, norms_path, data_name):
     """
@@ -336,25 +345,30 @@ def scale_model_data(data_path, norms_path, data_name):
     norms_path : str
         - path to the norms
     data_name : str
-        - Currently can only be "s1"
+        - Can be "s1" or "s2"
     """
     
+    # get column names for standard deviation and means
     if data_name == 's1':
-                
-        s1_data_orig = torch.load(data_path)
-        model_norms = torch.load(norms_path)
-        
-        s1_std = model_norms['s1_col_std'].unsqueeze(0).repeat(s1_data_orig.shape[0],1)
-        
-        s1_means = model_norms['s1_col_means'].unsqueeze(0).repeat(s1_data_orig.shape[0],1)
-
-        s1_data = (s1_data_orig - s1_means)/s1_std
-        
-        return s1_data
-    
+        sd_col = 's1_col_std'
+        means_col = 's1_col_means'
+    elif data_name == 's2':
+        sd_col = 's2_col_std'
+        means_col = 's2_col_means'
     else:
-        raise Exception('currently data_name can only be "s1"')
+        raise Exception('data_name must be "s1" or "s2"')
     
+    # load original data and normalization constants
+    data_orig = torch.load(data_path)
+    model_norms = torch.load(norms_path)
+
+    # scale data
+    norms_std = model_norms[sd_col].unsqueeze(0).repeat(data_orig.shape[0],1)
+    norms_means = model_norms[means_col].unsqueeze(0).repeat(data_orig.shape[0],1)
+
+    data_scaled = (data_orig - norms_means)/norms_std
+        
+    return data_scaled  
 
 # %%
 def resample_nearest_days(tensor_orig, days_select, day_col):
