@@ -37,7 +37,7 @@ import matplotlib.pyplot as plt
 
 # import importlib
 # importlib.reload(sys.modules['ml_transformer'])
-from ml_transformer import TransformerClassifier, SentinelDataset, scale_model_data
+from transformer_sentinel import TransformerClassifier, SentinelDataset, scale_model_data
 
 # %%
 if False:

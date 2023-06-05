@@ -3,21 +3,23 @@
 import os
 import torch
 import numpy as np
+
+# %%
+# Set working directory
 wds = ["/Users/gopalpenny/Projects/ml/classy/transformer_classifier",
        "/Users/gopal/Projects/ml/classy/transformer_classifier"]
 wd_exists = [x for x in wds if os.path.exists(x)][0]
 os.chdir(wd_exists)
 # %%
-
 import sys
 sys.path.insert(0, './transformer_classifier')
 
 # import importlib
 # importlib.reload(['train_transformer'])
-from train_transformer import train_transformer_func
-from ml_transformer import TransformerClassifier
+from train_transformer_function import train_transformer_func
+from transformer_sentinel import TransformerClassifier
 # %%
-###### TRAIN MODEL ON S1 AND S2 DATA ######
+###### Set paths to input data ######
 s1_data_path = "data/s1_data_prepped.pt"
 s2_data_path = "data/s2_data_prepped.pt"
 labels_path = 'data/model_data_labels.pt'
