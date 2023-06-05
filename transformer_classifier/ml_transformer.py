@@ -125,18 +125,27 @@ class TransformerClassifier(nn.Module):
     
     def forward(self, s1: Tensor, s2: Tensor) -> Tensor:
         
-        if self.s1_dim > 0:
-            s1_data_and_pe = self.s1nn(s1)
+        if s1.nelement() == 0 and s2.nelement() == 0:
+            raise Exception('s1 and s2 cannot both be empty')
         
-        if self.s2_dim > 0:
+        # get data and positional embedding for s1
+        if s1.nelement() != 0:
+            s1_data_and_pe = self.s1nn(s1)
+        else: # or return empty tensor if s1 is empty
+            s1_data_and_pe = torch.empty(s2.shape[0], 0, self.dmodel)
+        
+        # get data and positional embedding for s2
+        if s2.nelement() != 0:
             s2_data_and_pe = self.s2nn(s2)
+        else: # or return empty tensor if s2 is empty
+            s2_data_and_pe = torch.empty(s1.shape[0], 0, self.dmodel)
 
-        if self.s1_dim > 0 and self.s2_dim == 0:
-            data_and_pe = s1_data_and_pe
-        elif self.s1_dim == 0 and self.s2_dim > 0:
-            data_and_pe = s2_data_and_pe
-        else:
-            data_and_pe = torch.cat((s1_data_and_pe, s2_data_and_pe), dim = 1)
+        # if s1.nelement() != 0 and s2.nelement() == 0:
+        #     data_and_pe = s1_data_and_pe
+        # elif s1.nelement() == 0 and s2.nelement() != 0:
+        #     data_and_pe = s2_data_and_pe
+        # else:
+        data_and_pe = torch.cat((s1_data_and_pe, s2_data_and_pe), dim = 1)
         
         encoder_out = self.encoder(data_and_pe)
         
@@ -251,6 +260,8 @@ class SentinelDataset(Dataset):
             s1 = s1.float()
             # s1 = getitem_sentinel_data(s_data = self.s1, loc_id = loc_id, max_obs_s = self.max_obs_s1,
             #                            resample_days = self.resample_days, resample_days_n = self.resample_days_n)
+        else:
+            s1 = torch.empty(0)
         
         if self.s2 is not None:
             # select location id and remove loc_id column
@@ -258,13 +269,10 @@ class SentinelDataset(Dataset):
             s2 = s2.float()
             # s2 = getitem_sentinel_data(s_datssa = self.s2, loc_id = loc_id, max_obs_s = self.max_obs_s2,
             #                            resample_days = self.resample_days, resample_days_n = self.resample_days_n)
-        
-        if ((self.s1 is not None) and (self.s2 is None)):
-            return s1, y, loc_id
-        elif ((self.s1 is None) and (self.s2 is not None)):
-            return s2, y, loc_id
         else:
-            return s1, s2, y, loc_id
+            s2 = torch.empty(0)
+        
+        return s1, s2, y, loc_id
         
     def __len__(self):
         return self.y.shape[0]

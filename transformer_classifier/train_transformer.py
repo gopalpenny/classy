@@ -7,9 +7,14 @@ Created on Sat Jan 14 19:18:30 2023
 
 To run the script, at the command line type:
     
-python train_s1_transformer.py path/to/s1_data.pt path/to/model_data_norms.pt path/to/model_data_labels.pt path/to/output_directory
-python train_s1_transformer.py data/s1_data_prepped.pt data/model_data_norms.pt data/model_data_labels.pt s1_train_test
+python train_s1_transformer.py path/to/s1_data.pt path/to/model_data_norms.pt path/to/model_data_labels.pt path/to/output_directory 25
+python train_s1_transformer.py data/s1_data_prepped.pt data/model_data_norms.pt data/model_data_labels.pt s1_train_test 25
 """
+# %%
+# torch.ones(3,4)
+# torch.zeros(0,4)
+
+# torch.cat((torch.ones(3,4), torch.zeros(0,4)), dim = 0)
 
 # %%
 import os
@@ -35,7 +40,15 @@ import matplotlib.pyplot as plt
 from ml_transformer import TransformerClassifier, SentinelDataset, scale_model_data
 
 # %%
-def train_transformer_func(s1_data_path, s2_data_path, norms_path, labels_path, output_dir_path):
+if False:
+    # %%
+    s1_data_path = "data/s1_data_prepped.pt"
+    s2_data_path = None # "data/s2_data_prepped.pt"
+    labels_path = 'data/model_data_labels.pt'
+    norms_path = "data/model_data_norms.pt"
+    output_dir_path = "./s1_train"
+# %%
+def train_transformer_func(xnn, s1_data_path, s2_data_path, norms_path, labels_path, output_dir_path, n_epochs):
 
     # %%
     if not os.path.exists(output_dir_path):
@@ -55,7 +68,7 @@ def train_transformer_func(s1_data_path, s2_data_path, norms_path, labels_path, 
     # %%
 
     if s1_data_path is not None:
-        # Read in Sentinel 1 data and scale based on norms
+        print("Reading in Sentinel 1 data and scaling based on norms...")
         s1_all = scale_model_data(data_path = s1_data_path, 
                                     norms_path = norms_path,
                                     data_name = "s1")
@@ -65,13 +78,14 @@ def train_transformer_func(s1_data_path, s2_data_path, norms_path, labels_path, 
         s1_valid = s1_all[np.isin(s1_all[:, 0], y_valid[:,0])]
         s1_test = s1_all[np.isin(s1_all[:, 0], y_test[:,0])]
     else:
+        print("No Sentinel 1 data used.")
         s1_train = None
         s1_valid = None
         s1_test = None
 
     
     if s2_data_path is not None:
-
+        print("Reading in Sentinel 2 data and scaling based on norms...")
         s2_all = scale_model_data(data_path = s2_data_path,
                                     norms_path = norms_path,
                                     data_name = "s2")
@@ -80,6 +94,7 @@ def train_transformer_func(s1_data_path, s2_data_path, norms_path, labels_path, 
         s2_valid = s2_all[np.isin(s2_all[:, 0], y_valid[:,0])]
         s2_test = s2_all[np.isin(s2_all[:, 0], y_test[:,0])]
     else:
+        print("No Sentinel 2 data used.")
         s2_train = None
         s2_valid = None
         s2_test = None
@@ -87,9 +102,14 @@ def train_transformer_func(s1_data_path, s2_data_path, norms_path, labels_path, 
     # %%
 
     # Prep datasets
-    data_train = SentinelDataset(y_train, s1_train, s2_train, 64, 64, True, 6)
-    data_valid = SentinelDataset(y_valid, s1_valid, s2_valid, 64, 64, True, 6)
-    data_test = SentinelDataset(y_test, s1_test, s2_test, 64, 64, True, 6)
+    data_train = SentinelDataset(y_train, s1_train, s2_train)
+    data_valid = SentinelDataset(y_valid, s1_valid, s2_valid)
+    data_test = SentinelDataset(y_test, s1_test, s2_test)
+
+    # %%
+    # check training dataset returns correct values
+    # a = data_train.__getitem__(0)
+    # [str(a[i].shape) for i in range(len(a)) if a[i] is not None]
 
     # %%
 
@@ -129,7 +149,7 @@ def train_transformer_func(s1_data_path, s2_data_path, norms_path, labels_path, 
 
     # %%
     # test transformer
-    # next(iter(train_dl))
+    a = next(iter(train_dl))
     # s1, s2, y, _ = next(iter(train_dl))
     # print(f'{s1.shape}')
     # print(f'{s2_2.shape}')
@@ -145,12 +165,13 @@ def train_transformer_func(s1_data_path, s2_data_path, norms_path, labels_path, 
     # data_dim = 4: "day","VV","VH","angle" // loc_id included original data but not counted
     # because it doesn't get sent to the transformer
 
-    xnn = TransformerClassifier(dmodel = 36, nhead = 6, dhid = 100, nlayers = 3, s1_dim = 4, s2_dim = 5, nclasses = 4)
+    # xnn = TransformerClassifier(dmodel = 36, nhead = 6, dhid = 100, nlayers = 3, s1_dim = 4, s2_dim = 5, nclasses = 4)
 
     # %%
     # test transformer
     s1, s2, y, _ = next(iter(train_dl))
-    xnn(s1, s2)
+    # s2x = s2[:, :, 0:4]
+    # xnn(s1, s2)
 
     # %%
 
@@ -179,14 +200,18 @@ def train_transformer_func(s1_data_path, s2_data_path, norms_path, labels_path, 
     # for train_features, train_labels in train_dl:
     #     i += 1
     #     print(i)
-    n_epochs = 50
+    # n_epochs = 50
     loss_hist_train = [0] * n_epochs
     accuracy_hist_train = [0] * n_epochs
     loss_hist_valid = [0] * n_epochs
     accuracy_hist_valid = [0] * n_epochs
+
+    # %%
     for epoch in range(n_epochs):
+        
         counter = 0
         xnn.train()
+
         for s1_batch, s2_batch, y_batch, loc_id in train_dl:
             
             # Forward pass
@@ -241,6 +266,7 @@ def train_transformer_func(s1_data_path, s2_data_path, norms_path, labels_path, 
                 f' Val Accuracy: {accuracy_hist_valid[epoch]:.4f}')
         
     # %%
+
     loss_hist_test = 0
     accuracy_hist_test = 0
     with torch.no_grad():
@@ -312,6 +338,7 @@ if __name__ == "__main__":
         norms_path = cmd_args[2]
         labels_path = cmd_args[3]
         output_dir_path = cmd_args[4]
+        n_epochs = int(cmd_args[5])
         print('User-defined input arguments:\n')
     else:
     
@@ -320,17 +347,22 @@ if __name__ == "__main__":
         labels_path = 'data/model_data_labels.pt'
         norms_path = "data/model_data_norms.pt"
         output_dir_path = "./s1_train"
+        n_epochs = 25
         
         print(f'For defining custom arguments, specify {num_user_args-1} inputs.')
         print('Using default input arguments:\n')
         
     print(f's1_data_path: {s1_data_path}')
+    print(f's2_data_path: {s2_data_path}')
     print(f'labels_path: {labels_path}')
     print(f'norms_path: {norms_path}')
     print(f'output_dir_path: {output_dir_path}\n')
+    print(f'n_epochs: {n_epochs}\n')
     print('Running predict_s1_classes() function...')
     # time.sleep(1)
     
-    train_transformer_s1(s1_data_path, norms_path, labels_path, output_dir_path)
+    xnn = TransformerClassifier(dmodel = 36, nhead = 6, dhid = 100, nlayers = 3, s1_dim = 4, s2_dim = 5, nclasses = 4)
+
+    train_transformer_func(xnn, s1_data_path, s2_data_path, norms_path, labels_path, output_dir_path, n_epochs)
     
 
