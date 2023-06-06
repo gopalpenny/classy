@@ -55,7 +55,7 @@ def train_transformer_func(xnn, s1_data_path, s2_data_path, norms_path, labels_p
     if not os.path.exists(output_dir_path):
         os.mkdir(output_dir_path)
 
-    
+    print('Beginning train_transformer_func() function...\n')
     print_path = os.path.join(output_dir_path, "train_output.txt")
     orig_stdout = sys.stdout
     print_out = open(print_path, 'w')
@@ -65,15 +65,15 @@ def train_transformer_func(xnn, s1_data_path, s2_data_path, norms_path, labels_p
     # if torch.backends.mps.is_available():
     #     # device = torch.device("mps")
     #     device = torch.device("cpu")
-    # elif torch.cuda.is_available():
-    #     device = torch.device("cpu")
-    # else:
-    #     device = torch.device("cpu")
-    # xnn.to(device)
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+    else:
+        device = torch.device("cpu")
+    xnn.to(device)
+    print('Beginning train_transformer_func() function...\n')
 
     t_start = time.time()
-
-    device = "cpu"
+    
     # with open(print_path, 'w') as f:
     print(f"starting training at {time.strftime('%c')} on {device}")    
     
