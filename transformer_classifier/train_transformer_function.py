@@ -56,7 +56,7 @@ def train_transformer_func(xnn, s1_data_path, s2_data_path, norms_path, labels_p
         os.mkdir(output_dir_path)
 
     print(f'Beginning train_transformer_func() function with {n_epochs} epochs...\n')
-    print_path = os.path.join(output_dir_path, "train_output.txt")
+    print_path = os.path.join(output_dir_path, "output.txt")
     orig_stdout = sys.stdout
     print_out = open(print_path, 'w')
     sys.stdout = print_out
@@ -75,7 +75,7 @@ def train_transformer_func(xnn, s1_data_path, s2_data_path, norms_path, labels_p
     t_start = time.time()
 
     # with open(print_path, 'w') as f:
-    print(f'Beginning train_transformer_func() function with {n_epochs} epochs...\n')
+    print(f"starting training at {time.strftime('%c')} on {device}")    
     
     # %%
 
