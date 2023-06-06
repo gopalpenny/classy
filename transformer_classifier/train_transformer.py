@@ -7,7 +7,8 @@ import numpy as np
 # %%
 # Set working directory
 wds = ["/Users/gopalpenny/Projects/ml/classy/transformer_classifier",
-       "/Users/gopal/Projects/ml/classy/transformer_classifier"]
+       "/Users/gopal/Projects/ml/classy/transformer_classifier",
+       "/home/svu/gpenny/Projects/classy/transformer_classifier"]
 wd_exists = [x for x in wds if os.path.exists(x)][0]
 os.chdir(wd_exists)
 # %%
