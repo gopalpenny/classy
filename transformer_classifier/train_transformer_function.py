@@ -66,7 +66,7 @@ def train_transformer_func(xnn, s1_data_path, s2_data_path, norms_path, labels_p
         # device = torch.device("mps")
         device = torch.device("cpu")
     elif torch.cuda.is_available():
-        device = torch.device("cuda")
+        device = torch.device("cpu")
     else:
         device = torch.device("cpu")
     xnn.to(device)
@@ -171,7 +171,7 @@ def train_transformer_func(xnn, s1_data_path, s2_data_path, norms_path, labels_p
 
     # %%
     # test transformer
-    a = next(iter(train_dl))
+    # a = next(iter(train_dl))
     # s1, s2, y, _ = next(iter(train_dl))
     # print(f'{s1.shape}')
     # print(f'{s2_2.shape}')
@@ -324,7 +324,7 @@ def train_transformer_func(xnn, s1_data_path, s2_data_path, norms_path, labels_p
     t_end = time.time()
     t_diff_sec = t_end - t_start
     print(f"finished training at {time.strftime('%c')}")
-    print(f"total time: {time.strftime('%HH:%MM:%SS', time.gmtime(12345))}")
+    print(f"total time: {time.strftime('%HH:%MM:%SS', time.gmtime(t_diff_sec))}")
 
 
     # %%
