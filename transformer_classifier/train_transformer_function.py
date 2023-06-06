@@ -26,6 +26,7 @@ wds = ["/Users/gopalpenny/Projects/ml/classy/transformer_classifier",
 # %%
 import torch
 import sys
+import time
 from torch import nn
 from torch.utils.data import DataLoader, WeightedRandomSampler
 from torch.nn.utils.rnn import pad_sequence
@@ -53,6 +54,10 @@ def train_transformer_func(xnn, s1_data_path, s2_data_path, norms_path, labels_p
     # %%
     if not os.path.exists(output_dir_path):
         os.mkdir(output_dir_path)
+
+    # %%
+    t_start = time.time()
+    print(f"starting training at {time.strftime('%c')}")    
     
     # %%
 
@@ -293,6 +298,13 @@ def train_transformer_func(xnn, s1_data_path, s2_data_path, norms_path, labels_p
 
     torch.save(xnn, os.path.join(output_dir_path, "s1_xnn_trained.pt"))    
 
+   # %%
+    t_end = time.time()
+    t_diff_sec = t_end - t_start
+    print(f"finished training at {time.strftime('%c')}")
+    print(f"total time: {time.strftime('%HH:%MM:%SS', time.gmtime(12345))}")
+
+
     # %%
 
     # test_dl
@@ -301,7 +313,8 @@ def train_transformer_func(xnn, s1_data_path, s2_data_path, norms_path, labels_p
     #     # print(i)
     #     print(len(x['x']))
         # print(y_batch.shape)
-
+    
+    print("Saving training figure and data...")
     # %%
     fig, axs = plt.subplots(2)
     axs[0].plot(loss_hist_train, label = "Training")
@@ -325,6 +338,7 @@ def train_transformer_func(xnn, s1_data_path, s2_data_path, norms_path, labels_p
         'accuracy_hist_valid' : accuracy_hist_valid,})
 
     training_metrics.to_csv(os.path.join(output_dir_path,"s1_training_metrics.csv"))
+    print("Done.\n")
     
 if __name__ == "__main__":
     
