@@ -57,22 +57,24 @@ def train_transformer_func(xnn, s1_data_path, s2_data_path, norms_path, labels_p
 
     
     print_path = os.path.join(output_dir_path, "train_output.txt")
-    orig_stdout = sys.stdout
-    print_out = open(print_path, 'w')
-    sys.stdout = print_out
+    # orig_stdout = sys.stdout
+    # print_out = open(print_path, 'w')
+    # sys.stdout = print_out
 
-    # %%
-    if torch.backends.mps.is_available():
-        # device = torch.device("mps")
-        device = torch.device("cpu")
-    elif torch.cuda.is_available():
-        device = torch.device("cpu")
-    else:
-        device = torch.device("cpu")
-    xnn.to(device)
+    # # %%
+    # if torch.backends.mps.is_available():
+    #     # device = torch.device("mps")
+    #     device = torch.device("cpu")
+    # elif torch.cuda.is_available():
+    #     device = torch.device("cpu")
+    # else:
+    #     device = torch.device("cpu")
+    # xnn.to(device)
 
     t_start = time.time()
-    print(f"starting training at {time.strftime('%c')} on {device}")    
+
+    with open(print_path, 'w') as f:
+        print(f"starting training at {time.strftime('%c')} on {device}", file = f)    
     
     # %%
 
@@ -238,9 +240,9 @@ def train_transformer_func(xnn, s1_data_path, s2_data_path, norms_path, labels_p
             
             # loading to device for each batch is not uncommon, see
             # https://stackoverflow.com/questions/60789801/moving-dataloader-data-to-gpu-pytorch
-            s1_batch = s1_batch.to(device)
-            s2_batch = s2_batch.to(device)
-            y_batch = y_batch.to(device)
+            # s1_batch = s1_batch.to(device)
+            # s2_batch = s2_batch.to(device)
+            # y_batch = y_batch.to(device)
             
             # Forward pass
             pred = xnn(s1_batch, s2_batch)
