@@ -29,7 +29,7 @@ output_dir_path = "./s1_s2_train"
 
 # %%
 # Number of training epochs
-n_epochs = 25 # of training epochs
+n_epochs = 3 # of training epochs
 
 # Parameters for the transformer
 # Note - dmodel must be divisible by nhead

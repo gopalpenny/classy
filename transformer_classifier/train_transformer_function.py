@@ -73,8 +73,9 @@ def train_transformer_func(xnn, s1_data_path, s2_data_path, norms_path, labels_p
 
     t_start = time.time()
 
+    device = "cpu"
     # with open(print_path, 'w') as f:
-    print(f"starting training at {time.strftime('%c')} on {device}", file = f)    
+    print(f"starting training at {time.strftime('%c')} on {device}")    
     
     # %%
 
