@@ -18,3 +18,4 @@ transformer_classifier/ubon_data/recheckingin/U_U2_S2_32_B8432_RSN_1122.pt
 transformer_classifier/s1_s2_train/s1_training_loss.png
 transformer_classifier/s1_s2_train/s1_training_metrics.csv
 transformer_classifier/s1_s2_train/s1_xnn_trained.pt
+transformer_classifier/s1_s2_train/train_output.txt
