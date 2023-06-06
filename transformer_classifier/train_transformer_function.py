@@ -55,7 +55,7 @@ def train_transformer_func(xnn, s1_data_path, s2_data_path, norms_path, labels_p
     if not os.path.exists(output_dir_path):
         os.mkdir(output_dir_path)
 
-    print('Beginning train_transformer_func() function...\n')
+    print(f'Beginning train_transformer_func() function with {n_epochs} epochs...\n')
     print_path = os.path.join(output_dir_path, "train_output.txt")
     orig_stdout = sys.stdout
     print_out = open(print_path, 'w')
@@ -73,9 +73,9 @@ def train_transformer_func(xnn, s1_data_path, s2_data_path, norms_path, labels_p
     print('Beginning train_transformer_func() function...\n')
 
     t_start = time.time()
-    
+
     # with open(print_path, 'w') as f:
-    print(f"starting training at {time.strftime('%c')} on {device}")    
+    print(f'Beginning train_transformer_func() function with {n_epochs} epochs...\n')
     
     # %%
 
