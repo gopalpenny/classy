@@ -20,8 +20,8 @@ python train_s1_transformer.py data/s1_data_prepped.pt data/model_data_norms.pt 
 import os
 wds = ["/Users/gopalpenny/Projects/ml/classy/transformer_classifier",
        "/Users/gopal/Projects/ml/classy/transformer_classifier"]
-wd_exists = [x for x in wds if os.path.exists(x)][0]
-os.chdir(wd_exists)
+# wd_exists = [x for x in wds if os.path.exists(x)][0]
+# os.chdir(wd_exists)
 
 # %%
 import torch
