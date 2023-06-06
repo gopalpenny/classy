@@ -43,6 +43,7 @@ s1_dim = 4 # number of columns in s1 and s2 data (excluding loc_id)
 s2_dim = 5 # number of columns in s1 and s2 data (excluding loc_id)
 nclasses = 4 # number of classes in the data
 
+
 # %%
 xnn = TransformerClassifier(dmodel = dmodel, # embedding dimention (# columns passed to attention layers)
                             nhead = nhead, # number of heads in the multiheadattention models

@@ -55,9 +55,24 @@ def train_transformer_func(xnn, s1_data_path, s2_data_path, norms_path, labels_p
     if not os.path.exists(output_dir_path):
         os.mkdir(output_dir_path)
 
+    
+    print_path = os.path.join(output_dir_path, "train_output.txt")
+    orig_stdout = sys.stdout
+    print_out = open(print_path, 'w')
+    sys.stdout = print_out
+
     # %%
+    if torch.backends.mps.is_available():
+        # device = torch.device("mps")
+        device = torch.device("cpu")
+    elif torch.cuda.is_available():
+        device = torch.device("cuda")
+    else:
+        device = torch.device("cpu")
+    xnn.to(device)
+
     t_start = time.time()
-    print(f"starting training at {time.strftime('%c')}")    
+    print(f"starting training at {time.strftime('%c')} on {device}")    
     
     # %%
 
@@ -77,6 +92,7 @@ def train_transformer_func(xnn, s1_data_path, s2_data_path, norms_path, labels_p
         s1_all = scale_model_data(data_path = s1_data_path, 
                                     norms_path = norms_path,
                                     data_name = "s1")
+        s1_all = s1_all
         
         # Split training X values
         s1_train = s1_all[np.isin(s1_all[:, 0], y_train[:,0])]
@@ -94,6 +110,7 @@ def train_transformer_func(xnn, s1_data_path, s2_data_path, norms_path, labels_p
         s2_all = scale_model_data(data_path = s2_data_path,
                                     norms_path = norms_path,
                                     data_name = "s2")
+        s2_all = s2_all
 
         s2_train = s2_all[np.isin(s2_all[:, 0], y_train[:,0])]
         s2_valid = s2_all[np.isin(s2_all[:, 0], y_valid[:,0])]
@@ -219,6 +236,12 @@ def train_transformer_func(xnn, s1_data_path, s2_data_path, norms_path, labels_p
 
         for s1_batch, s2_batch, y_batch, loc_id in train_dl:
             
+            # loading to device for each batch is not uncommon, see
+            # https://stackoverflow.com/questions/60789801/moving-dataloader-data-to-gpu-pytorch
+            s1_batch = s1_batch.to(device)
+            s2_batch = s2_batch.to(device)
+            y_batch = y_batch.to(device)
+            
             # Forward pass
             pred = xnn(s1_batch, s2_batch)
             
@@ -232,7 +255,6 @@ def train_transformer_func(xnn, s1_data_path, s2_data_path, norms_path, labels_p
             #     counter +=1
                 
             loss = loss_fn(pred, y_batch)
-            
             
             # Accumulate loss and accuracy
             loss_hist_train[epoch] += loss.item() * y_batch.size(0)
@@ -296,7 +318,7 @@ def train_transformer_func(xnn, s1_data_path, s2_data_path, norms_path, labels_p
     print(f'Test Loss: {loss_hist_test:.4f}, Test Accuracy: {accuracy_hist_test:.4f}')
         
 
-    torch.save(xnn, os.path.join(output_dir_path, "s1_xnn_trained.pt"))    
+    torch.save(xnn, os.path.join(output_dir_path, "xnn_trained.pt"))    
 
    # %%
     t_end = time.time()
@@ -328,7 +350,7 @@ def train_transformer_func(xnn, s1_data_path, s2_data_path, norms_path, labels_p
     # plt.show()
 
     # %%
-    plt.savefig(os.path.join(output_dir_path, "s1_training_loss.png"))
+    plt.savefig(os.path.join(output_dir_path, "training_loss.png"))
 
     # %%
     training_metrics = pd.DataFrame({
@@ -337,8 +359,11 @@ def train_transformer_func(xnn, s1_data_path, s2_data_path, norms_path, labels_p
         'accuracy_hist_train' : accuracy_hist_train,
         'accuracy_hist_valid' : accuracy_hist_valid,})
 
-    training_metrics.to_csv(os.path.join(output_dir_path,"s1_training_metrics.csv"))
+    training_metrics.to_csv(os.path.join(output_dir_path,"training_metrics.csv"))
     print("Done.\n")
+
+    sys.stdout = orig_stdout
+    print_out.close()
     
 if __name__ == "__main__":
     
