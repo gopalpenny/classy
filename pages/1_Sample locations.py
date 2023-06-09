@@ -205,7 +205,7 @@ if st.session_state['status']['sample_status']:
     
     st.sidebar.markdown("# Adjust points")
     
-    s1colA, s1colB, s1colC = st.sidebar.columns([3,1,1])
+    s1colA, s1colB, s1colC = st.sidebar.columns([2,1,1])
     
     # side_layout = st.sidebar.beta_columns([1,1])
     with s1colA: #scol2 # side_layout[-1]:
@@ -227,7 +227,7 @@ if st.session_state['status']['sample_status']:
     sample_pt_set_latlon = [sample_pt_set.geometry.y, sample_pt_set.geometry.x]
     
     
-    arrow_columns = st.sidebar.columns([2, 1,1,1.3, 2])
+    arrow_columns = st.sidebar.columns([2.5, 1,1,1.3, 1.5])
     
     if 'y_shift' not in st.session_state:
         st.session_state['y_shift'] = 0
@@ -268,7 +268,7 @@ if st.session_state['status']['sample_status']:
         st.text('')
         st.markdown(right_text)
     
-    set_columns = st.sidebar.columns([2,1,1])
+    set_columns = st.sidebar.columns([2,0.85,1.15])
     
     Class_prev = list(st.session_state.class_df.loc[st.session_state.class_df.loc_id == loc_id, 'Class'])[0]
     Classes =  list(st.session_state.class_df.Class.unique()) + ['Input new']

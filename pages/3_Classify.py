@@ -31,14 +31,12 @@ import importlib
 importlib.reload(mf)
 importlib.reload(cpf)
 
-  
+
 gdrive_path = '/Users/gopal/Google Drive'
 gdrive_ml_path = os.path.join(gdrive_path, '_Research projects/ML')
 # sys.path.append(gdrive_ml_path)
 out_folder = 'gee_sentinel_ts'
 data_path = os.path.join(gdrive_ml_path, 'classapp/script_output', out_folder)
-
-
 
 # %%
 if 'classification_year' not in st.session_state:
@@ -142,7 +140,7 @@ def go_to_id_year(id_to_go, year):
     
 
 
-s1colA, s1colB, s1colC = st.sidebar.columns([3,1,1])
+s1colA, s1colB, s1colC = st.sidebar.columns([2.25,1.25,1.25])
 
 # side_layout = st.sidebar.beta_columns([1,1])
 with s1colA: #scol2 # side_layout[-1]:
@@ -354,8 +352,8 @@ start_date = date_range[0]
     
 with col2:
     # st.write(m.to_streamlit())
-    st_folium(m_folium, height = 300, width = 600)
     default_zoom_classify = st.number_input('Default zoom', min_value= 10, max_value= 20, value = 18, key = 'default_zoom_classify')
+    st_folium(m_folium, height = 300, width = 600)
 
 # %%
 
@@ -423,9 +421,9 @@ with se2col2:
 start_date = datetime.strptime(date_range[0], '%Y-%m-%d')
 end_date = datetime.strptime(date_range[1], '%Y-%m-%d')
 
-st.markdown("""###""")
+# st.markdown("""###""")
 break_col_width = 0.15
-st_snapshots_title_cols = st.columns([3,break_col_width,2])
+st_snapshots_title_cols = st.columns([1, 2, break_col_width,2])
 
 
 def update_spectra_range():
@@ -433,8 +431,12 @@ def update_spectra_range():
     st.session_state['spectrum_range_2'] = st.session_state['spectrum_r2']
 
 with st_snapshots_title_cols[0]:
-    st.markdown('#### Snapshots')
-with st_snapshots_title_cols[2]:
+    st.markdown('### Snapshots')
+with st_snapshots_title_cols[1]:
+    st.markdown('')
+    st.radio('Snapshot satellite', options = ['Sentinel-2', 'Landsat-8'], index = 0, 
+             horizontal = True, key = 'snapshot_satellite', label_visibility = 'collapsed')
+with st_snapshots_title_cols[3]:
     st.markdown('#### Reflectance spectra')
 # with st_snapshots_title_cols[2]:
 #     st.text('')
@@ -532,17 +534,19 @@ with spectrum_slider_date_col[0]:
     init_range1 = st.session_state['spectrum_range_1']
     if outside_bounds(init_range1, datetime_range):
         init_range1 = (month_seq[1], month_seq[2])
-    spectrum_range_1 = st.slider('Spectrum date range 1', min_value = start_date, max_value = end_date, value = init_range1, key = 'spectrum_r1')
+    spectrum_range_1 = st.slider('Spectrum range 1', min_value = start_date, max_value = end_date, 
+                                 value = init_range1, key = 'spectrum_r1', format = 'MMM')
 with spectrum_slider_date_col[1]:
     init_range2 = st.session_state['spectrum_range_2']
     if outside_bounds(init_range2, datetime_range):
         init_range2 = (month_seq[2], month_seq[3])
-    spectrum_range_2 = st.slider('Spectrum date range 2', min_value = start_date, max_value = end_date, value = init_range2, key = 'spectrum_r2')
+    spectrum_range_2 = st.slider('Spectrum range 2', min_value = start_date, max_value = end_date, 
+                                 value = init_range2, key = 'spectrum_r2', format = 'MMM')
     
 with spectrum_slider_date_col[2]:
     st.text('')
     st.text('')
-    st.button('Update', key = 'go_to_spectra', on_click = update_spectra_range, )
+    st.button(':heavy_check_mark:', key = 'go_to_spectra', on_click = update_spectra_range, )
 
 spectra_list = [st.session_state['spectrum_range_1'], st.session_state['spectrum_range_2']]
 p_sentinel = mf.plotTimeseries(loc_id, date_range, month_seq, snapshot_dates, spectra_list) 
@@ -561,9 +565,11 @@ with col1:
 # st_snapshots_cols = st_snapshots.columns([1,1,1,2])
 st_snapshots_cols = st.columns([1,1,1,break_col_width,2])
     
+ee_satellite_name = 'COPERNICUS/S2_SR'
+ee_band_names = ['B8','B4','B3']
 with st_snapshots_cols[0]:
     if im_date1 != 'No dates in range':
-        im_array1 = cpf.get_image_near_point1('COPERNICUS/S2_SR', im_date1, ['B8','B4','B3'], loc_pt_latlon, buffer_px)
+        im_array1 = cpf.get_image_near_point1(ee_satellite_name, im_date1, ee_band_names, loc_pt_latlon, buffer_px)
         plt1 = cpf.plot_array_image(im_array1)
         st.pyplot(plt1)
     else:
@@ -572,7 +578,7 @@ with st_snapshots_cols[0]:
 
 with st_snapshots_cols[1]:
     if im_date2 != 'No dates in range':
-        im_array2 = cpf.get_image_near_point2('COPERNICUS/S2_SR', im_date2, ['B8','B4','B3'], loc_pt_latlon, buffer_px)
+        im_array2 = cpf.get_image_near_point2(ee_satellite_name, im_date2, ee_band_names, loc_pt_latlon, buffer_px)
         plt2 = cpf.plot_array_image(im_array2)
         st.pyplot(plt2)
     else:
@@ -581,7 +587,7 @@ with st_snapshots_cols[1]:
 
 with st_snapshots_cols[2]:
     if im_date3 != 'No dates in range':
-        im_array3 = cpf.get_image_near_point3('COPERNICUS/S2_SR', im_date3, ['B8','B4','B3'], loc_pt_latlon, buffer_px)
+        im_array3 = cpf.get_image_near_point3(ee_satellite_name, im_date3, ee_band_names, loc_pt_latlon, buffer_px)
         plt3 = cpf.plot_array_image(im_array3)
         st.pyplot(plt3)
     else:
