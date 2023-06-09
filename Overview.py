@@ -37,6 +37,7 @@ from datetime import datetime
 import appmodules.manclass as mf
 # import appmodules.SamplePageFunctions as spf
 import appmodules.OverviewPageFunctions as opf
+import geopandas as gpd
 # import re
 # from plotnine import *
 # import leafmap
@@ -214,9 +215,6 @@ with m1cols[3]:
               args = (year_default, start_month, start_day, ))
 
 
-st.write(st.session_state['proj_vars'])
-
-
 st.markdown('### App overview')
 
 st.markdown(
@@ -242,7 +240,7 @@ st.markdown(
 # %%
 
 
-os.listdir(default_appdata_path)[0:4]
+# os.listdir(default_appdata_path)[0:4]
 
 # %%
 
@@ -269,16 +267,26 @@ tile = folium.TileLayer(
 #         control = True
 #        ).add_to(m)
 
+if st.session_state['status']['region_status']:
+    region_shp = gpd.read_file(st.session_state['paths']['region_shp_path'])
+    folium.GeoJson(region_shp, style_function = lambda x: {
+        'fillColor': 'transparent'
+    }).add_to(m)
+    x1,y1,x2,y2 = region_shp['geometry'].total_bounds
+    m.fit_bounds([[y1, x1], [y2, x2]])
 
 
+
+st_folium(m, height = 300, width = 600)
+
+st.markdown('### Stored project variables:')
+st.write(st.session_state['proj_vars'])
 
 
 # with st.sidebar:
 #     st.number_input('num', 0, 5, 2)
     
 # col1, col2 = st.columns(2)
-
-st_folium(m, height = 300, width = 600)
 
 with st.sidebar:
     st.subheader("Project: " + st.session_state.proj_name)
