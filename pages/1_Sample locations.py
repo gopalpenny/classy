@@ -78,12 +78,12 @@ main_columns = st.columns([1,1])
 
 # with col1:
 #     st.pyplot(p9.ggplot.draw(p_map))
-with main_columns[0]:
-    
-    # buf = BytesIO()
-    # p9.ggplot.draw(p_map).savefig(buf, format="png")
-    # st.image(buf)
-    st.pyplot(p9.ggplot.draw(p_map))
+
+if not st.session_state['status']['sample_status']:
+    # draw the map if we don't have a sample status yet, otherwise draw it inside
+    # the sample status section
+    with main_columns[0]:
+        st.pyplot(p9.ggplot.draw(p_map))
     
 
 if not 'default_zoom_sample' in st.session_state:
@@ -284,7 +284,7 @@ if st.session_state['status']['sample_status']:
     with set_columns[1]:
         st.markdown('###')
         st.text('')
-        st.button('SET', on_click = spf.set_shift, args = (loc_id, ClassBox, new_class, ))
+        st.button('SET', on_click = spf.set_shift, args = (loc_id, ClassBox, new_class,))
     with set_columns[2]:
         st.markdown('###')
         st.text('')
@@ -326,10 +326,16 @@ if st.session_state['status']['sample_status']:
             control = True
             ).add_to(m_folium)
     
+    # Add location to watershed map
+    p_map = (p_map + 
+             p9.geom_map(data = loc_pt_orig, mapping = p9.aes(), fill = 'red', shape = 'o', color = 'red', size = 3))
+    
+    with main_columns[0]:
+        st.pyplot(p9.ggplot.draw(p_map))
     # get pixel polygonsloc_id, ic_name, coords_xy, ic_str, band_name,
     loc_pt_xy = [float(loc_pt_latlon_adj[1]), float(loc_pt_latlon_adj[0])]
-    landsat_px_poly = spf.get_pixel_poly(loc_id,'oli8', loc_pt_xy, 'LANDSAT/LC08/C02/T1_L2', 'SR_B5', buffer_m = 0, vector_type = 'gpd')
-    s2_px_poly = spf.get_pixel_poly(loc_id,'s2',loc_pt_xy, 'COPERNICUS/S2', 'B4', buffer_m = 0, vector_type = 'gpd')
+    landsat_px_poly = spf.get_pixel_poly(loc_id, 'oli8', loc_pt_xy, 'LANDSAT/LC08/C02/T1_L2', 'SR_B5', buffer_m = 0, vector_type = 'gpd')
+    s2_px_poly = spf.get_pixel_poly(loc_id, 's2', loc_pt_xy, 'COPERNICUS/S2', 'B4', buffer_m = 0, vector_type = 'gpd')
     def style(feature):
         return {
             'fill': False,

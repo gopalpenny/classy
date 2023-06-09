@@ -361,7 +361,7 @@ def shift_points_m(pts_gpd, xshift_m, yshift_m):
     return pts_shifted
 
 
-def get_pixel_poly(loc_id, ic_name, coords_xy, ic_str, band_name, buffer_m = 0, vector_type = 'ee_fc'):
+def get_pixel_poly(loc_id, ic_name, coords_xy, ic_str, band_name, buffer_m = 0, vector_type = 'ee_fc', option = 'earthengine'):
     
     
     px_poly_dir_path = st.session_state['paths']['px_poly_dir_path']
@@ -372,15 +372,17 @@ def get_pixel_poly(loc_id, ic_name, coords_xy, ic_str, band_name, buffer_m = 0, 
         
     loc_px_poly_path = os.path.join(px_poly_dir_path, 'px_poly_' + str(loc_id) + '_' + ic_name + '.shp')
     
-    if os.path.exists(loc_px_poly_path):
+    if os.path.exists(loc_px_poly_path) and option != 'earthengine':
         px_group_poly = gpd.read_file(loc_px_poly_path)
     else:                 
         px_group_poly = get_ee_pixel_poly(coords_xy, ic_str, band_name, buffer_m, vector_type)
-        px_group_poly.to_file(loc_px_poly_path)
+        # px_group_poly.to_file(loc_px_poly_path)
         
     pt_xy = gpd.points_from_xy([coords_xy[0]], [coords_xy[1]], crs = 'epsg:4326')
     pt_xy_gpd = gpd.GeoSeries(pt_xy)
-        
+    
+    print('px_group_poly')
+    print(px_group_poly)
     px_poly = ([px_group_poly.loc[i:i] for 
                 i in px_group_poly.index 
                 if pt_xy_gpd.within(px_group_poly.loc[i,'geometry'])[0]])[0]
@@ -428,7 +430,7 @@ def get_ee_pixel_poly(coords_xy, ic_str, band_name, buffer_m = 0, vector_type = 
     ic_im = ic.filterBounds(pt).first().select(band_name)
     # oli8_px_int = oli8_px.select('SR_B5').gt(25000).rename('test')
     px_poly = ic_im.reduceToVectors(
-        geometry = pt.buffer(buffer_m),
+        geometry = pt.buffer(buffer_m, 1),
         scale = ic_im.projection().nominalScale())
     
     if vector_type == 'ee_fc':
