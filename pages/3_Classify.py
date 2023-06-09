@@ -434,7 +434,7 @@ with st_snapshots_title_cols[0]:
     st.markdown('### Snapshots')
 with st_snapshots_title_cols[1]:
     st.markdown('')
-    st.radio('Snapshot satellite', options = ['Sentinel-2', 'Landsat-8'], index = 0, 
+    st.radio('Snapshot satellite', options = ['Sentinel 2', 'Landsat'], index = 0, 
              horizontal = True, key = 'snapshot_satellite', label_visibility = 'collapsed')
 with st_snapshots_title_cols[3]:
     st.markdown('#### Reflectance spectra')
@@ -446,12 +446,21 @@ st_snapshots_dates_cols = st.columns([1,1,1,break_col_width,0.8,0.8,0.35])
 # snapshot_dates_cols = st_snapshots_dates_cols[0:3]
 
 tsS2 = mf.GenS2data(loc_id, date_range).query('cloudmask == 0')
+oli8 = mf.GenOLI8data(loc_id, date_range) #.query('clouds_shadows==0')
+print('oli8')
+print(oli8)
+
+# raise Exception('stop here')
 # tsS2 = tsS2[start_date <= tsS2['datetime']]
 # tsS2 = tsS2[tsS2['datetime'] <= end_date]
 
 # dates_datetime = tsS2[datetime.strftime(tsS2['datetime'],'%Y'),'datetime']
-dates_datetime = [x.to_pydatetime() for x in list(OrderedDict.fromkeys(tsS2['datetime']))]
-dates_str = [datetime.strftime(x, '%Y-%m-%d') for x in dates_datetime]
+if st.session_state['snapshot_satellite'] == 'Landsat':
+    dates_datetime = [x.to_pydatetime() for x in list(OrderedDict.fromkeys(tsS2['datetime']))]
+    dates_str = [datetime.strftime(x, '%Y-%m-%d') for x in dates_datetime]
+elif st.session_state['snapshot_satellite'] == 'Sentinel 2':
+    dates_datetime = [x.to_pydatetime() for x in list(OrderedDict.fromkeys(tsS2['datetime']))]
+    dates_str = [datetime.strftime(x, '%Y-%m-%d') for x in dates_datetime]
 
 
 month_increment = 4
@@ -565,8 +574,12 @@ with col1:
 # st_snapshots_cols = st_snapshots.columns([1,1,1,2])
 st_snapshots_cols = st.columns([1,1,1,break_col_width,2])
     
-ee_satellite_name = 'COPERNICUS/S2_SR'
-ee_band_names = ['B8','B4','B3']
+if st.session_state['snapshot_satellite'] == 'Landsat':
+    ee_satellite_name = 'COPERNICUS/S2_SR'
+    ee_band_names = ['B8','B4','B3']
+elif st.session_state['snapshot_satellite'] == 'Sentinel 2':
+    ee_satellite_name = 'COPERNICUS/S2_SR'
+    ee_band_names = ['B8','B4','B3']
 with st_snapshots_cols[0]:
     if im_date1 != 'No dates in range':
         im_array1 = cpf.get_image_near_point1(ee_satellite_name, im_date1, ee_band_names, loc_pt_latlon, buffer_px)
