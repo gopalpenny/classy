@@ -142,13 +142,13 @@ def InitializeSampleLocations():
 
 
 def left_shift():
-    st.session_state['x_shift'] -= 10
+    st.session_state['x_shift'] -= 10 + (st.session_state['shift30m'] * 20)
 def right_shift():
-    st.session_state['x_shift'] += 10
+    st.session_state['x_shift'] += 10 + (st.session_state['shift30m'] * 20)
 def down_shift():
-    st.session_state['y_shift'] -= 10
+    st.session_state['y_shift'] -= 10 + (st.session_state['shift30m'] * 20)
 def up_shift():
-    st.session_state['y_shift'] += 10
+    st.session_state['y_shift'] += 10 + (st.session_state['shift30m'] * 20)
     
 def set_shift(loc_id, Class, new_class):
     UpdateClassOnly(loc_id, Class,  new_class)

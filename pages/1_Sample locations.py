@@ -248,6 +248,8 @@ if st.session_state['status']['sample_status']:
     with arrow_columns[0]:
         # st.write(pt_set_str)
         st.text('Set? ' + pt_set_str)
+        st.markdown('##')
+        st.checkbox('Shift 30 m', value = False, key = 'shift30m')
     with arrow_columns[1]:
         st.markdown('###')
         st.text('')
