@@ -159,9 +159,9 @@ def plotTimeseries(loc_id, date_range, month_seq, snapshot_dates, spectra_list):
     alltimeseries_cloudfree['date'] = [datetime.strftime(x, '%Y-%m-%d') for x in alltimeseries_cloudfree['datetime']]
     
     vert_scales = pd.DataFrame({
-        'variable': ['NDVI']*3 + ['backscatter']*3 + ['precipitation']*3,
-        'value': [0, 0.5, 1] + [0, 20, 40] + [0, 50, 100],
-        'line': ['a', 'b', 'b']*3})
+        'variable': ['NDVI']*4 + ['backscatter']*3 + ['precipitation']*3,
+        'value': [0, 0.2, 0.4, 0.6] + [0, 20, 40] + [0, 50, 100],
+        'line': ['a', 'b', 'a', 'b'] + ['a', 'b', 'b'] + ['a', 'b', 'b']})
     
     # snapshots
     if snapshot_dates != None:
@@ -187,14 +187,17 @@ def plotTimeseries(loc_id, date_range, month_seq, snapshot_dates, spectra_list):
     month_seq_labels_brief = [datetime.strftime(x, "%b %d") for x in month_seq]
     month_seq_labels = [month_seq_labels_full[i] if i == 0 or i == (len(month_seq)-len(month_seq)) else month_seq_labels_brief[i] for i in range(len(month_seq))]
     
+    ## GENERATE THE FIGURE
     p_timeseries = (
         p9.ggplot(data = alltimeseries_cloudfree, mapping = p9.aes('datetime', 'value')) + 
         p9.annotate('rect',xmin = start_date, xmax = end_date, ymin = -np.Infinity, ymax = np.Infinity, fill = 'white', color = 'black', alpha = 1))
     
+    # Add spectra, if applicable
     if spectra_list != None:
         p_timeseries = (p_timeseries +
             p9.geom_segment(data = spectral_range, mapping = p9.aes(x = 'start_date', xend = 'end_date', y = 'yval', yend = 'yval',color = 'id'), size = 2))
 
+    # Add vertical lines, points, and lines
     p_timeseries = (p_timeseries + p9.geom_vline(data = month_seq_df, mapping = p9.aes(xintercept = 'datetime'), color = 'black', alpha = 0.5) +
         p9.annotate('vline', xintercept = year_begin_datetime, color = 'gray', linetype = 'dashed', alpha = 0.5) +
         p9.geom_abline(data = vert_scales, mapping = p9.aes(intercept = 'value', slope = 0, linetype = 'line'), color = 'red', alpha = 0.35) +

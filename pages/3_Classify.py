@@ -149,7 +149,7 @@ def go_to_id_year(id_to_go, year):
     st.session_state.subclass_year = 'Subclass' + str(year)
     
 
-view_options_expander = st.sidebar.expander('View options and zoom')
+view_options_expander = st.sidebar.expander('View options, zoom, and go to ID')
 with view_options_expander:
     s0colA, s0colB = view_options_expander.columns([1,1])
 # s0colA, s0colB = st.sidebar.columns([1,1])
@@ -161,27 +161,14 @@ with s0colB:
     st.number_input('Zoom', min_value= 10, max_value= 20, value = 18, key = 'default_zoom_classify', label_visibility='collapsed')
 
 
-s1colA, s1colB, s1colC = st.sidebar.columns([2.25,1.25,1.25])
-
-# side_layout = st.sidebar.beta_columns([1,1])
-with s1colA: #scol2 # side_layout[-1]:
-    st.markdown('### Location ID: ' + str(loc_id))
-    # loc_id = int(st.number_input('Location ID', 1, allpts.query('allcomplete').loc_id.max(), 1))
-    
-
 # %% 
 # GO TO EXPANDER
 
-go_to_expander = st.sidebar.expander('Go to')
+# go_to_expander = st.sidebar.expander('Go to')
 
-with go_to_expander:
+with view_options_expander:
     # st.text('go to year not working')
-    s2colA, s2colB, s2colC = go_to_expander.columns([1.5,2,1.5])
-
-with s1colC:
-    st.button('Next', on_click = next_button, args = ())
-with s1colB:
-    st.button('Prev', on_click = prev_button, args = ())
+    s2colA, s2colB, s2colC = view_options_expander.columns([1.5,2,1.5])
     
 with s2colA:
     id_to_go = st.text_input("ID", value = str(loc_id))
@@ -195,7 +182,20 @@ with s2colC:
     st.text("")
     st.text("")
     st.button('Go', on_click = go_to_id_year, args = (id_to_go, year_to_go, ))
+
+s1colA, s1colB, s1colC = st.sidebar.columns([2.25,1.25,1.25])
+
+with s1colC:
+    st.button('Next', on_click = next_button, args = ())
+with s1colB:
+    st.button('Prev', on_click = prev_button, args = ())
+
+# side_layout = st.sidebar.beta_columns([1,1])
+with s1colA: #scol2 # side_layout[-1]:
+    st.markdown('### Location ID: ' + str(loc_id))
+    # loc_id = int(st.number_input('Location ID', 1, allpts.query('allcomplete').loc_id.max(), 1))
     
+
 # loc_id_num = loc_id
 # loc_id = 1
 
@@ -556,7 +556,11 @@ if st.session_state['show_snapshots']:
     last_timer = print_time('Done creating spectrum sliders', last_timer)
     spectra_list = [st.session_state['spectrum_range_1'], st.session_state['spectrum_range_2']]
 
-p_sentinel = mf.plotTimeseries(loc_id, date_range, month_seq, None, None) 
+if not st.session_state['show_snapshots']:
+    snapshot_dates = None
+    spectra_list = None
+
+p_sentinel = mf.plotTimeseries(loc_id, date_range, month_seq, snapshot_dates, spectra_list) 
 last_timer = print_time('Done getting timeseries plot', last_timer)
 
 # %%    
