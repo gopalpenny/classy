@@ -336,8 +336,8 @@ if st.session_state['status']['sample_status']:
         st.pyplot(p9.ggplot.draw(p_map))
     # get pixel polygonsloc_id, ic_name, coords_xy, ic_str, band_name,
     loc_pt_xy = [float(loc_pt_latlon_adj[1]), float(loc_pt_latlon_adj[0])]
-    landsat_px_poly = spf.get_pixel_poly(loc_id, 'oli8', loc_pt_xy, 'LANDSAT/LC08/C02/T1_L2', 'SR_B5', buffer_m = 0, vector_type = 'gpd')
-    s2_px_poly = spf.get_pixel_poly(loc_id, 's2', loc_pt_xy, 'COPERNICUS/S2', 'B4', buffer_m = 0, vector_type = 'gpd')
+    landsat_px_poly = spf.get_pixel_poly(loc_id, 'oli8', loc_pt_xy, 'LANDSAT/LC08/C02/T1_L2', 'SR_B5', buffer_m = 0, vector_type = 'gpd', option = 'earthengine-save')
+    s2_px_poly = spf.get_pixel_poly(loc_id, 's2', loc_pt_xy, 'COPERNICUS/S2', 'B4', buffer_m = 0, vector_type = 'gpd', option = 'earthengine-save')
     def style(feature):
         return {
             'fill': False,

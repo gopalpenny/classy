@@ -189,16 +189,25 @@ def plotTimeseries(loc_id, date_range, month_seq, snapshot_dates, spectra_list):
     
     p_timeseries = (
         p9.ggplot(data = alltimeseries_cloudfree, mapping = p9.aes('datetime', 'value')) + 
-        p9.annotate('rect',xmin = start_date, xmax = end_date, ymin = -np.Infinity, ymax = np.Infinity, fill = 'white', color = 'black', alpha = 1) +
-        # p9.geom_segment(data = spectral_range, mapping = p9.aes(x = 'start_date', xend = 'end_date', y = 'yval', yend = 'yval',color = 'id'), size = 2) +
-        p9.geom_vline(data = month_seq_df, mapping = p9.aes(xintercept = 'datetime'), color = 'black', alpha = 0.5) +
+        p9.annotate('rect',xmin = start_date, xmax = end_date, ymin = -np.Infinity, ymax = np.Infinity, fill = 'white', color = 'black', alpha = 1))
+    
+    if spectra_list != None:
+        p_timeseries = (p_timeseries +
+            p9.geom_segment(data = spectral_range, mapping = p9.aes(x = 'start_date', xend = 'end_date', y = 'yval', yend = 'yval',color = 'id'), size = 2))
+
+    p_timeseries = (p_timeseries + p9.geom_vline(data = month_seq_df, mapping = p9.aes(xintercept = 'datetime'), color = 'black', alpha = 0.5) +
         p9.annotate('vline', xintercept = year_begin_datetime, color = 'gray', linetype = 'dashed', alpha = 0.5) +
         p9.geom_abline(data = vert_scales, mapping = p9.aes(intercept = 'value', slope = 0, linetype = 'line'), color = 'red', alpha = 0.35) +
         p9.geom_point(mapping = p9.aes(shape = 'source')) + 
         p9.geom_line(data = alltimeseries_cloudfree[alltimeseries_cloudfree.variable.isin(line_vars)], mapping = p9.aes(group = 'source')) + 
         p9.geom_smooth(data = alltimeseries_cloudfree[alltimeseries_cloudfree.variable.isin(smooth_vars_25)], span = 0.1) + 
-        p9.geom_smooth(data = alltimeseries_cloudfree[alltimeseries_cloudfree.variable.isin(smooth_vars_05)], span = 0.05) + 
-        # p9.geom_point(data = alltimeseries_snapshots, mapping=p9.aes(fill = 'snapshot'), size = 4) + 
+        p9.geom_smooth(data = alltimeseries_cloudfree[alltimeseries_cloudfree.variable.isin(smooth_vars_05)], span = 0.05))
+    
+    if snapshot_dates != None:
+        p_timeseries = (p_timeseries +
+                         p9.geom_point(data = alltimeseries_snapshots, mapping=p9.aes(fill = 'snapshot'), size = 4)) 
+    
+    p_timeseries = (p_timeseries + 
         p9.scale_color_continuous(guide = False) +
         p9.scale_fill_discrete(guide = False) +
         p9.facet_wrap('variable', scales = 'free_y',ncol = 1) +

@@ -149,6 +149,17 @@ def go_to_id_year(id_to_go, year):
     st.session_state.subclass_year = 'Subclass' + str(year)
     
 
+view_options_expander = st.sidebar.expander('View options and zoom')
+with view_options_expander:
+    s0colA, s0colB = view_options_expander.columns([1,1])
+# s0colA, s0colB = st.sidebar.columns([1,1])
+
+with s0colA:
+    st.checkbox('Snapshots and spectra', value = False, key = 'show_snapshots')
+
+with s0colB:
+    st.number_input('Zoom', min_value= 10, max_value= 20, value = 18, key = 'default_zoom_classify', label_visibility='collapsed')
+
 
 s1colA, s1colB, s1colC = st.sidebar.columns([2.25,1.25,1.25])
 
@@ -310,9 +321,9 @@ tile = folium.TileLayer(
 
 # get pixel polygonsloc_id, ic_name, coords_xy, ic_str, band_name,
 loc_pt_xy = [float(loc_pt_latlon[1]), float(loc_pt_latlon[0])]
-landsat_px_poly = spf.get_pixel_poly(loc_id,'oli8', loc_pt_xy, 'LANDSAT/LC08/C02/T1_L2', 'SR_B5', buffer_m = 60, vector_type = 'gpd')
+landsat_px_poly = spf.get_pixel_poly(loc_id,'oli8', loc_pt_xy, 'LANDSAT/LC08/C02/T1_L2', 'SR_B5', buffer_m = 60, vector_type = 'gpd', option = 'local')
 last_timer = print_time('Done getting landsat_px_poly', last_timer)
-s2_px_poly = spf.get_pixel_poly(loc_id,'s2',loc_pt_xy, 'COPERNICUS/S2', 'B4', buffer_m = 60, vector_type = 'gpd')
+s2_px_poly = spf.get_pixel_poly(loc_id,'s2',loc_pt_xy, 'COPERNICUS/S2', 'B4', buffer_m = 60, vector_type = 'gpd', option = 'local')
 last_timer = print_time('Done getting s2_px_poly', last_timer)
 def style(feature):
     return {
@@ -555,12 +566,8 @@ with main_col1:
 
 with main_col2:
     # st.write(m.to_streamlit())
-    default_zoom_classify = st.number_input('Default zoom', min_value= 10, max_value= 20, value = 18, key = 'default_zoom_classify')
     st_folium(m_folium, height = 300, width = 600)
     last_timer = print_time('Done printing map to right column', last_timer)
-
-
-st.checkbox('Show snapshots and spectra', value = False, key = 'show_snapshots')
 
 # st_snapshots_cols = st_snapshots.columns([1,1,1,2])
 

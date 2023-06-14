@@ -361,7 +361,22 @@ def shift_points_m(pts_gpd, xshift_m, yshift_m):
     return pts_shifted
 
 
-def get_pixel_poly(loc_id, ic_name, coords_xy, ic_str, band_name, buffer_m = 0, vector_type = 'ee_fc', option = 'earthengine'):
+def get_pixel_poly(loc_id, ic_name, coords_xy, ic_str, band_name, buffer_m = 0, vector_type = 'ee_fc', option = 'earthengine-save'):
+    """Download a polygon for the pixel containing coords_xy
+
+    Args:
+        loc_id (int): id for the location
+        ic_name (str): short name to label the image collection
+        coords_xy (list): list of length 2, with x, y coordinates
+        ic_str (_type_): earth engine name of the image collection from which to get the pixel poly
+        band_name (_type_): earth engine band name to use for the pixel poly
+        buffer_m (int, optional): Buffer (m) around which to get pixel polygons. Defaults to 0.
+        vector_type (str, optional): gpd for geopandas or ee_fc to get a feature collection. Defaults to 'ee_fc'.
+        option (str, optional): 'local' or (default) 'earthengine-save' which retrieves and downloads
+
+    Returns:
+        _type_: _description_
+    """
     
     print('Running get_pixel_poly()')
     px_poly_dir_path = st.session_state['paths']['px_poly_dir_path']
@@ -372,11 +387,12 @@ def get_pixel_poly(loc_id, ic_name, coords_xy, ic_str, band_name, buffer_m = 0, 
         
     loc_px_poly_path = os.path.join(px_poly_dir_path, 'px_poly_' + str(loc_id) + '_' + ic_name + '.shp')
     
-    if os.path.exists(loc_px_poly_path) and option != 'earthengine':
+    if os.path.exists(loc_px_poly_path) and option == 'local':
         px_group_poly = gpd.read_file(loc_px_poly_path)
-    else:                 
+    else:
         px_group_poly = get_ee_pixel_poly(coords_xy, ic_str, band_name, buffer_m, vector_type)
-        # px_group_poly.to_file(loc_px_poly_path)
+        if option == 'local' or option == 'earthengine-save':
+            px_group_poly.to_file(loc_px_poly_path)
         
     pt_xy = gpd.points_from_xy([coords_xy[0]], [coords_xy[1]], crs = 'epsg:4326')
     pt_xy_gpd = gpd.GeoSeries(pt_xy)
