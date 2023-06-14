@@ -21,8 +21,6 @@ import os
 
 # %%
 
-
-
 def InitializeClassDF():
     print('running InitializeClassDF()')
     proj_years = st.session_state['proj_vars']['proj_years']
@@ -231,7 +229,7 @@ def get_image_near_point(im_collection_id, im_date,  bands_rgb, latitude, longit
 
     """
     
-    
+    print('running get_image_near_point()')
         
     start_datetime = datetime.strptime(im_date,'%Y-%m-%d')
     end_date = datetime.strftime(start_datetime + timedelta(days = 1), '%Y-%m-%d')
@@ -239,6 +237,7 @@ def get_image_near_point(im_collection_id, im_date,  bands_rgb, latitude, longit
     try:
         pt = ee.Geometry.Point([longitude, latitude])
     except:
+        print('Initializing Earth Engine')
         ee.Initialize()
         pt = ee.Geometry.Point([longitude, latitude])
         
@@ -258,11 +257,11 @@ def get_image_near_point(im_collection_id, im_date,  bands_rgb, latitude, longit
     kernel = ee.Kernel.fixed(imdim, imdim, kernel_lists, 
                              x = buffer_px, y = buffer_px)
     
-    
+    print('running neighborhoodToArray()')
     im_eearray = im.neighborhoodToArray(kernel)
-    
-    
+
     # sample the region and return array from ee to python
+    print('running reduceRegion()')
     im_dict = im_eearray.reduceRegion(ee.Reducer.first(), geometry = pt, scale = 10).getInfo()
     # # old, with bounding box:
     # im_dict = im.sampleRectangle(region = pt_bbox, properties = []).getInfo()
@@ -273,6 +272,7 @@ def get_image_near_point(im_collection_id, im_date,  bands_rgb, latitude, longit
     im_props_keys = list(im_props.keys())
 
     if return_geopandas:
+        print('returning geopandas')
         df = pd.DataFrame()
         for i in range(len(im_props)):
             colname = im_props_keys[i]
@@ -290,6 +290,7 @@ def get_image_near_point(im_collection_id, im_date,  bands_rgb, latitude, longit
 
     else:
         # extract each band separately
+        print('returning np.array as bands')
         Bred = np.expand_dims(np.array(im_props[bands_rgb[0]]), 2)
         Bgreen = np.expand_dims(np.array(im_props[bands_rgb[1]]), 2)
         Bblue = np.expand_dims(np.array(im_props[bands_rgb[2]]), 2)
@@ -297,12 +298,14 @@ def get_image_near_point(im_collection_id, im_date,  bands_rgb, latitude, longit
         im_array_rgb = np.concatenate((Bred, Bgreen, Bblue), axis = 2)
         return_val = im_array_rgb
     
+    print('finished get_image_near_point()')
     return return_val
 
 
 
 # @st.cache_data
 def plot_array_image(im_array):
+    print('running plot_array_image()')
     xcenter = math.floor(im_array.shape[0] / 2)
     ycenter = math.floor(im_array.shape[1] / 2)
     

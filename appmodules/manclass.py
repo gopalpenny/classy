@@ -82,7 +82,7 @@ def GenOLI8data(loc_id, date_range):
     
     oli8['datetime'] = pd.to_datetime([datetime.strptime(x, '%Y%m%d') for x in oli8['datestr']])
     oli8 = oli8.assign(NDVI = lambda df: (df.SR_B5 - df.SR_B4)/(df.SR_B5 + df.SR_B4))
-    
+    oli8['cloudmask'] =  oli8['clouds_shadows']
     
     oli8_long = oli8.melt(id_vars = ['datetime','cloudmask'], value_vars = ['SR_B7','SR_B6','SR_B5','SR_B4','SR_B3','SR_B2','NDVI'])
     oli8_long['source'] = 'Landsat 8'
@@ -129,7 +129,7 @@ def plotTimeseries(loc_id, date_range, month_seq, snapshot_dates, spectra_list):
         Plot of timeseries for the points in question.
 
     """
-    
+    print('Running manclass.plotTimeseries()')
     timeseries_dir_path = st.session_state['paths']['timeseries_dir_path']
     
     s1 = GenS1data(loc_id, date_range)
@@ -164,20 +164,24 @@ def plotTimeseries(loc_id, date_range, month_seq, snapshot_dates, spectra_list):
         'line': ['a', 'b', 'b']*3})
     
     # snapshots
-    snapshot_datetimes = pd.DataFrame({
-        'date' : snapshot_dates,
-        'snapshot' : [str(x) for x in list(range(len(snapshot_dates)))]})
-    alltimeseries_snapshots = alltimeseries_cloudfree.merge(snapshot_datetimes, how = 'inner', on = 'date')
+    if snapshot_dates != None:
+        snapshot_datetimes = pd.DataFrame({
+            'date' : snapshot_dates,
+            'snapshot' : [str(x) for x in list(range(len(snapshot_dates)))]})
+        alltimeseries_snapshots = alltimeseries_cloudfree.merge(snapshot_datetimes, how = 'inner', on = 'date')
 
     # Build date range for spectra
-    spectral_range = pd.DataFrame(columns = ['id','start_date', 'end_date', 'variable'])
-    for i in range(len(spectra_list)):
-        row_list = [i] + list(spectra_list[i]) + [line_vars[0]]
-        spectral_range.loc[i] = row_list
+    if spectra_list != None:
+        spectral_range = pd.DataFrame(columns = ['id','start_date', 'end_date', 'variable'])
+        for i in range(len(spectra_list)):
+            row_list = [i] + list(spectra_list[i]) + [line_vars[0]]
+            spectral_range.loc[i] = row_list
         
     var_min = alltimeseries_cloudfree[alltimeseries_cloudfree['variable'] == line_vars[0]].value.min()
     var_max = alltimeseries_cloudfree[alltimeseries_cloudfree['variable'] == line_vars[0]].value.max()
-    spectral_range['yval'] = var_min + spectral_range.id * (var_max - var_min) * 0.05
+
+    if spectra_list != None:
+        spectral_range['yval'] = var_min + spectral_range.id * (var_max - var_min) * 0.05
     
     month_seq_labels_full = [datetime.strftime(x, "%b %d, %Y") for x in month_seq]
     month_seq_labels_brief = [datetime.strftime(x, "%b %d") for x in month_seq]
@@ -186,7 +190,7 @@ def plotTimeseries(loc_id, date_range, month_seq, snapshot_dates, spectra_list):
     p_timeseries = (
         p9.ggplot(data = alltimeseries_cloudfree, mapping = p9.aes('datetime', 'value')) + 
         p9.annotate('rect',xmin = start_date, xmax = end_date, ymin = -np.Infinity, ymax = np.Infinity, fill = 'white', color = 'black', alpha = 1) +
-        p9.geom_segment(data = spectral_range, mapping = p9.aes(x = 'start_date', xend = 'end_date', y = 'yval', yend = 'yval',color = 'id'), size = 2) +
+        # p9.geom_segment(data = spectral_range, mapping = p9.aes(x = 'start_date', xend = 'end_date', y = 'yval', yend = 'yval',color = 'id'), size = 2) +
         p9.geom_vline(data = month_seq_df, mapping = p9.aes(xintercept = 'datetime'), color = 'black', alpha = 0.5) +
         p9.annotate('vline', xintercept = year_begin_datetime, color = 'gray', linetype = 'dashed', alpha = 0.5) +
         p9.geom_abline(data = vert_scales, mapping = p9.aes(intercept = 'value', slope = 0, linetype = 'line'), color = 'red', alpha = 0.35) +
@@ -194,7 +198,7 @@ def plotTimeseries(loc_id, date_range, month_seq, snapshot_dates, spectra_list):
         p9.geom_line(data = alltimeseries_cloudfree[alltimeseries_cloudfree.variable.isin(line_vars)], mapping = p9.aes(group = 'source')) + 
         p9.geom_smooth(data = alltimeseries_cloudfree[alltimeseries_cloudfree.variable.isin(smooth_vars_25)], span = 0.1) + 
         p9.geom_smooth(data = alltimeseries_cloudfree[alltimeseries_cloudfree.variable.isin(smooth_vars_05)], span = 0.05) + 
-        p9.geom_point(data = alltimeseries_snapshots, mapping=p9.aes(fill = 'snapshot'), size = 4) + 
+        # p9.geom_point(data = alltimeseries_snapshots, mapping=p9.aes(fill = 'snapshot'), size = 4) + 
         p9.scale_color_continuous(guide = False) +
         p9.scale_fill_discrete(guide = False) +
         p9.facet_wrap('variable', scales = 'free_y',ncol = 1) +

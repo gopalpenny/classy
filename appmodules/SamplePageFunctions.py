@@ -363,7 +363,7 @@ def shift_points_m(pts_gpd, xshift_m, yshift_m):
 
 def get_pixel_poly(loc_id, ic_name, coords_xy, ic_str, band_name, buffer_m = 0, vector_type = 'ee_fc', option = 'earthengine'):
     
-    
+    print('Running get_pixel_poly()')
     px_poly_dir_path = st.session_state['paths']['px_poly_dir_path']
     
     # print(px_poly_dir_path)
@@ -381,8 +381,8 @@ def get_pixel_poly(loc_id, ic_name, coords_xy, ic_str, band_name, buffer_m = 0, 
     pt_xy = gpd.points_from_xy([coords_xy[0]], [coords_xy[1]], crs = 'epsg:4326')
     pt_xy_gpd = gpd.GeoSeries(pt_xy)
     
-    print('px_group_poly')
-    print(px_group_poly)
+    # print('px_group_poly')
+    # print(px_group_poly)
     px_poly = ([px_group_poly.loc[i:i] for 
                 i in px_group_poly.index 
                 if pt_xy_gpd.within(px_group_poly.loc[i,'geometry'])[0]])[0]
@@ -424,8 +424,9 @@ def get_ee_pixel_poly(coords_xy, ic_str, band_name, buffer_m = 0, vector_type = 
         ee.Initialize()
         pt = ee.Geometry.Point(coords_xy)
     
-    print('pt')
-    print(pt)
+    print('Running get_ee_pixel_poly()')
+    # print('pt')
+    # print(pt)
     ic = ee.ImageCollection(ic_str)
     ic_im = ic.filterBounds(pt).first().select(band_name)
     # oli8_px_int = oli8_px.select('SR_B5').gt(25000).rename('test')
