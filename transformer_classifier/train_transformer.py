@@ -38,6 +38,8 @@ dmodel = cfg.dmodel # embedding dimention (# columns passed to attention layers)
 nhead = cfg.nhead # number of heads in the multiheadattention models
 dhid = cfg.dhid # dimension of the feedforward network model (after each attention layer)
 nlayers = cfg.nlayers # number of attention layers
+lr = cfg.lr # learning rate
+weight_decay = cfg.weight_decay # weight decay
 
 # These variables shouldn't change
 s1_dim = 4 # number of columns in s1 and s2 data (excluding loc_id)
@@ -55,7 +57,7 @@ xnn = TransformerClassifier(dmodel = dmodel, # embedding dimention (# columns pa
 
 # %%
 ###### TRAIN MODEL ON S1 AND S2 DATA ######
-train_transformer_func(xnn, s1_data_path, s2_data_path, norms_path, labels_path, output_dir_path, n_epochs)
+train_transformer_func(xnn, s1_data_path, s2_data_path, norms_path, labels_path, output_dir_path, n_epochs, lr, weight_decay)
 
 # %%
 
