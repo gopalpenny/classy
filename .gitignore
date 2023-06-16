@@ -26,3 +26,5 @@ transformer_classifier/s1_train/train_output.txt
 transformer_classifier/s1_train/training_loss.png
 transformer_classifier/s1_train/training_metrics.csv
 transformer_classifier/s1_train/xnn_trained.pt
+testlog.txt
+transformer_classifier/s1_s2_train/output.txt
