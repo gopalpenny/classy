@@ -9,7 +9,7 @@ dependencies:
   - numpy
   - plotnine
   - geopandas
-  - streamlit
+  - streamlit >=1.23.1
   - earthengine-api
   - google-cloud-sdk
   - ipykernel
