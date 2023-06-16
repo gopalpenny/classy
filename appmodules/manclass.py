@@ -187,7 +187,9 @@ def plotTimeseries(loc_id, date_range, month_seq, snapshot_dates, spectra_list):
     month_seq_labels_brief = [datetime.strftime(x, "%b %d") for x in month_seq]
     month_seq_labels = [month_seq_labels_full[i] if i == 0 or i == (len(month_seq)-len(month_seq)) else month_seq_labels_brief[i] for i in range(len(month_seq))]
     
-    ## GENERATE THE FIGURE
+    ###################################
+    ## GENERATE THE FIGURE ###########
+    ###################################
     p_timeseries = (
         p9.ggplot(data = alltimeseries_cloudfree, mapping = p9.aes('datetime', 'value')) + 
         p9.annotate('rect',xmin = start_date, xmax = end_date, ymin = -np.Infinity, ymax = np.Infinity, fill = 'white', color = 'black', alpha = 1))
@@ -206,10 +208,12 @@ def plotTimeseries(loc_id, date_range, month_seq, snapshot_dates, spectra_list):
         p9.geom_smooth(data = alltimeseries_cloudfree[alltimeseries_cloudfree.variable.isin(smooth_vars_25)], span = 0.1) + 
         p9.geom_smooth(data = alltimeseries_cloudfree[alltimeseries_cloudfree.variable.isin(smooth_vars_05)], span = 0.05))
     
+    # Add snapshot points, if applicable
     if snapshot_dates != None:
         p_timeseries = (p_timeseries +
                          p9.geom_point(data = alltimeseries_snapshots, mapping=p9.aes(fill = 'snapshot'), size = 4)) 
     
+    # Add labels, scales, and themes
     p_timeseries = (p_timeseries + 
         p9.scale_color_continuous(guide = False) +
         p9.scale_fill_discrete(guide = False) +

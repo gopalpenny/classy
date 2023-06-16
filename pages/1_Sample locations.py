@@ -238,8 +238,8 @@ if st.session_state['status']['sample_status']:
     up_text = re.sub('^([0-9]+)','+\\1',str(st.session_state['y_shift'])) + ' m'
     right_text = re.sub('^([0-9]+)','+\\1',str(st.session_state['x_shift'])) + ' m'
     
-    st.write(sample_pts)
-    st.write(sample_pt_set)
+    st.write(pd.DataFrame(sample_pt_set.drop('geometry', axis = 1)))
+    st.write(pd.DataFrame(sample_pts.drop('geometry', axis = 1)))
     if sample_pt_set.loc_set.iloc[0]:
         pt_set_str = 'YES'
     else:
@@ -268,7 +268,7 @@ if st.session_state['status']['sample_status']:
         st.text('')
         st.markdown(right_text)
     
-    set_columns = st.sidebar.columns([2,0.85,1.15])
+    set_columns = st.sidebar.columns([1.95,0.9,1.15])
     
     Class_prev = list(st.session_state.class_df.loc[st.session_state.class_df.loc_id == loc_id, 'Class'])[0]
     Classes =  list(st.session_state.class_df.Class.unique()) + ['Input new']

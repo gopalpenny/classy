@@ -384,26 +384,38 @@ def get_pixel_poly(loc_id, ic_name, coords_xy, ic_str, band_name, buffer_m = 0, 
     # print(px_poly_dir_path)
     if not os.path.exists(px_poly_dir_path):
         os.mkdir(px_poly_dir_path)
+
+    pt_xy = gpd.points_from_xy([coords_xy[0]], [coords_xy[1]], crs = 'epsg:4326')
+    pt_xy_gpd = gpd.GeoSeries(pt_xy)
         
     loc_px_poly_path = os.path.join(px_poly_dir_path, 'px_poly_' + str(loc_id) + '_' + ic_name + '.shp')
     
     if os.path.exists(loc_px_poly_path) and option == 'local':
         px_group_poly = gpd.read_file(loc_px_poly_path)
+        # select the pixel poly as the one that contains the point
+        px_poly = ([px_group_poly.loc[i:i] for 
+                    i in px_group_poly.index 
+                    if pt_xy_gpd.within(px_group_poly.loc[i,'geometry'])[0]]) 
     else:
+        # create empty px_poly list to ensure execution of subsequent if statement
+        px_poly = []
+    
+    if len(px_poly) == 0:
         px_group_poly = get_ee_pixel_poly(coords_xy, ic_str, band_name, buffer_m, vector_type)
+        # select the pixel poly as the one that contains the point
+        px_poly = ([px_group_poly.loc[i:i] for 
+                    i in px_group_poly.index 
+                    if pt_xy_gpd.within(px_group_poly.loc[i,'geometry'])[0]])
         if option == 'local' or option == 'earthengine-save':
             px_group_poly.to_file(loc_px_poly_path)
+
         
-    pt_xy = gpd.points_from_xy([coords_xy[0]], [coords_xy[1]], crs = 'epsg:4326')
-    pt_xy_gpd = gpd.GeoSeries(pt_xy)
     
     # print('px_group_poly')
     # print(px_group_poly)
-    px_poly = ([px_group_poly.loc[i:i] for 
-                i in px_group_poly.index 
-                if pt_xy_gpd.within(px_group_poly.loc[i,'geometry'])[0]])[0]
+    # print(pt_xy_gpd)
 
-    return px_poly
+    return px_poly[0]
 
 def get_ee_pixel_poly(coords_xy, ic_str, band_name, buffer_m = 0, vector_type = 'ee_fc'):
     """Get polygon of pixel containing x, y coordinates

@@ -138,6 +138,28 @@ def build_allpts(proj_path):
 
 # %%
 
+
+
+def next_button():
+    class_df_filter = st.session_state.class_df_filter
+    current_loc_id = st.session_state.loc_id
+    new_locid = class_df_filter.loc_id[class_df_filter['loc_id'] > current_loc_id].min()
+    
+    # if loc_id is max for filters, then cycle back to beginning
+    if np.isnan(new_locid):
+        new_locid = class_df_filter.loc_id.min()
+    st.session_state.loc_id = int(new_locid)
+    
+def prev_button():
+    class_df_filter = st.session_state.class_df_filter
+    current_loc_id = st.session_state.loc_id
+    new_locid = class_df_filter.loc_id[class_df_filter['loc_id'] < current_loc_id].max()
+    
+    # if loc_id is min for filters, then cycle back to end
+    if np.isnan(new_locid):
+        new_locid = class_df_filter.loc_id.max()
+    st.session_state.loc_id = int(new_locid)
+
 def apply_filter(lat_range, lon_range, class_type, subclass_type, downloaded):
     
     st.session_state['filterargs'] = {
@@ -171,6 +193,10 @@ def apply_filter(lat_range, lon_range, class_type, subclass_type, downloaded):
     filterpts = filterpts[filterpts['lon'] >= lon_range[0]]
     filterpts = filterpts[filterpts['lon'] <= lon_range[1]]
     st.session_state['class_df_filter'] = filterpts
+
+    # print('loc_id in filterpts')
+    if not st.session_state.loc_id in filterpts.loc_id:
+        next_button()
     
     
 def clear_filter(lat_min, lat_max, lon_min, lon_max):
