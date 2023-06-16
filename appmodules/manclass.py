@@ -72,22 +72,22 @@ def GenS2data(loc_id, date_range):
     
     return s2_long
 
-def GenOLI8data(loc_id, date_range):
+def GenLandsatData(loc_id, date_range):
     timeseries_dir_path = st.session_state['paths']['timeseries_dir_path']
-    oli8_filename = 'pt_ts_loc' + str(loc_id) + '_oli8.csv'
-    oli8 = pd.read_csv(os.path.join(timeseries_dir_path,oli8_filename))
+    landsat_filename = 'pt_ts_loc' + str(loc_id) + '_landsat.csv'
+    landsat = pd.read_csv(os.path.join(timeseries_dir_path,landsat_filename))
         
     # time_series_pd['datestr'] = [re.sub('([0-9T])_.*','\\1',x) for x in time_series_pd_load['image_id']]
-    oli8['datestr'] = [re.sub('.*_([0-9]+)','\\1',x) for x in oli8['image_id']]
+    landsat['datestr'] = [re.sub('.*_([0-9]+)','\\1',x) for x in landsat['image_id']]
     
-    oli8['datetime'] = pd.to_datetime([datetime.strptime(x, '%Y%m%d') for x in oli8['datestr']])
-    oli8 = oli8.assign(NDVI = lambda df: (df.SR_B5 - df.SR_B4)/(df.SR_B5 + df.SR_B4))
-    oli8['cloudmask'] =  oli8['clouds_shadows']
+    landsat['datetime'] = pd.to_datetime([datetime.strptime(x, '%Y%m%d') for x in landsat['datestr']])
+    landsat = landsat.assign(NDVI = lambda df: (df.nir - df.red)/(df.nir + df.red))
+    landsat['cloudmask'] =  landsat['clouds_shadows']
     
-    oli8_long = oli8.melt(id_vars = ['datetime','cloudmask'], value_vars = ['SR_B7','SR_B6','SR_B5','SR_B4','SR_B3','SR_B2','NDVI'])
-    oli8_long['source'] = 'Landsat 8'
+    landsat_long = landsat.melt(id_vars = ['datetime','cloudmask'], value_vars = ['swir2','swir1','nir','red','green','blue','NDVI'])
+    landsat_long['source'] = 'Landsat 8'
     
-    return oli8_long
+    return landsat_long
     
 
 
@@ -135,15 +135,15 @@ def plotTimeseries(loc_id, date_range, month_seq, snapshot_dates, spectra_list):
     s1 = GenS1data(loc_id, date_range)
     s2 = GenS2data(loc_id, date_range)
     s2 = s2[s2['variable'] == 'NDVI']
-    oli8 = GenOLI8data(loc_id, date_range)
-    oli8 = oli8[oli8['variable'] == 'NDVI']
+    landsat = GenLandsatData(loc_id, date_range)
+    landsat = landsat[landsat['variable'] == 'NDVI']
     chirps = GenCHIRPSdata(loc_id, date_range)
     
     datetime_range = [datetime.strptime(x, '%Y-%m-%d') for x in date_range]
     
     year_begin_datetime = datetime.strftime(datetime_range[len(datetime_range)-1],"%Y-01-01")
     
-    alltimeseries = pd.concat([s1, s2, oli8, chirps])
+    alltimeseries = pd.concat([s1, s2, landsat, chirps])
     
     start_date = datetime_range[0]
     end_date = datetime_range[1]

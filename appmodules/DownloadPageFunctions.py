@@ -270,13 +270,13 @@ def DownloadLandsatpt(sample_pt_xy, loc_id, timeseries_dir_path, date_range, inf
         
         landsat_output_bands = ['blue','green','red','nir','swir1','swir2','clouds','clouds_shadows','cloudmask']
 
-        tm5 = prep_tm5_ic(sample_pt) 
-        etm7 = prep_etm7_ic(sample_pt)
-        oli8 = prep_oli8_ic(sample_pt) 
+        tm5 = rs.prep_tm5_ic(sample_pt) 
+        etm7 = rs.prep_etm7_ic(sample_pt)
+        oli8 = rs.prep_oli8_ic(sample_pt) 
 
         landsat = tm5.merge(etm7).merge(oli8) \
             .filterMetadata('CLOUD_COVER', 'less_than', 75)
-        landsat_clouds = prep_landsat_clouds(landsat)
+        landsat_clouds = rs.prep_landsat_clouds(landsat)
 
         landsat_ic = landsat_clouds \
           .filterBounds(sample_pt) \
