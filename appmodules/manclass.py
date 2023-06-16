@@ -73,7 +73,7 @@ def GenS2data(loc_id, date_range):
     return s2_long
 
 def GenLandsatData(loc_id, date_range):
-    timeseries_dir_path = st.session_state['paths']['timeseries_dir_path']
+    timeseries_dir_path = st.session_state['paths']['timeseries_dir_path'] 
     landsat_filename = 'pt_ts_loc' + str(loc_id) + '_landsat.csv'
     landsat = pd.read_csv(os.path.join(timeseries_dir_path,landsat_filename))
         
