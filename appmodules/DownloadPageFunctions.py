@@ -244,32 +244,41 @@ def DownloadS2pt(sample_pt_xy, loc_id, timeseries_dir_path, date_range, infobox)
         
         # print('Generating ' + s2_pt_filename + '.csv')
         infobox.info('Generating ' + s2_pt_filename + '.csv')
-        
-def DownloadOLI8pt(sample_pt_xy, loc_id, timeseries_dir_path, date_range, infobox):
+
+def DownloadLandsatpt(sample_pt_xy, loc_id, timeseries_dir_path, date_range, infobox):
     
     sample_pt_name = 'pt_ts_loc' + str(loc_id)
     
     sample_pt = ee.Geometry.Point(sample_pt_xy)
     
     timeseries_dir_name = Path(timeseries_dir_path).parts[-1]
-    oli8_colname = 'pt_ts_loc_oli8'
-    oli8_pt_filename = re.sub('loc_', 'loc' + str(loc_id) +'_', oli8_colname) #sample_pt_name + '_oli8'
-    oli8_pt_filepath = os.path.join(timeseries_dir_path, oli8_pt_filename + '.csv')
+    landsat_colname = 'pt_ts_loc_landsat'
+    landsat_pt_filename = re.sub('loc_', 'loc' + str(loc_id) +'_', landsat_colname) #sample_pt_name + '_landsat'
+    landsat_pt_filepath = os.path.join(timeseries_dir_path, landsat_pt_filename + '.csv')
     
-    oli8_pt_status = TimeseriesCheckLocStatus(loc_id, oli8_colname, timeseries_dir_path)
-    if os.path.exists(oli8_pt_filepath):
-        dummy = oli8_pt_filepath
-        infobox.info(oli8_pt_filename + '.csv already exists')
+    landsat_pt_status = TimeseriesCheckLocStatus(loc_id, landsat_colname, timeseries_dir_path)
+    if os.path.exists(landsat_pt_filepath):
+        dummy = landsat_pt_filepath
+        infobox.info(landsat_pt_filename + '.csv already exists')
         
-    elif oli8_pt_status != 'nan':
-        msgoli8 = oli8_pt_filename + ' status is ' + str(oli8_pt_status)
-        # print(msgoli8)
-        infobox.info(msgoli8)
-        # st.write(type(oli8_pt_status))
+    elif landsat_pt_status != 'nan':
+        msglandsat = landsat_pt_filename + ' status is ' + str(landsat_pt_status)
+        # print(msglandsat)
+        infobox.info(msglandsat)
+        # st.write(type(landsat_pt_status))
     else:
         
-        oli8_output_bands = ['SR_B7','SR_B6','SR_B5','SR_B4','SR_B3','SR_B2','clouds','clouds_shadows','cloudmask']
-        oli8_ic = ee.ImageCollection('LANDSAT/LC08/C02/T1_L2') \
+        landsat_output_bands = ['blue','green','red','nir','swir1','swir2','clouds','clouds_shadows','cloudmask']
+
+        tm5 = prep_tm5_ic(sample_pt) 
+        etm7 = prep_etm7_ic(sample_pt)
+        oli8 = prep_oli8_ic(sample_pt) 
+
+        landsat = tm5.merge(etm7).merge(oli8) \
+            .filterMetadata('CLOUD_COVER', 'less_than', 75)
+        landsat_clouds = prep_landsat_clouds(landsat)
+
+        landsat_ic = landsat_clouds \
           .filterBounds(sample_pt) \
           .filterDate(date_range[0],date_range[1])
           
@@ -278,39 +287,37 @@ def DownloadOLI8pt(sample_pt_xy, loc_id, timeseries_dir_path, date_range, infobo
               cloud_bit = 3, 
               shadow_bit = 4,
               keep_orig_bands = True) 
-        oli8_clouds_ic = (oli8_ic
+        landsat_clouds_ic = (landsat_ic
           .map(get_qaband_clouds_shadows))
           # .map(lambda im: im.addBands(im.expression('im.clouds | im.clouds_shadows', {'im' : im}).rename('cloudmask'))))
           
-        # Get oli8 pixel timeseries
-        oli8_ts = rs.get_pixel_ts_allbands(
+        # Get landsat pixel timeseries
+        landsat_ts = rs.get_pixel_ts_allbands(
             pts_fc = ee.FeatureCollection(sample_pt),
-            image_collection = oli8_clouds_ic,
+            image_collection = landsat_clouds_ic,
             ic_property_id = 'system:index',
             scale = 30) # for Landsat resolution
         # time_series_pd_load = geemap.ee_to_pandas(time_series_fc)
-    
-        # oli8_output_bands = ['B8','B4','B3','B2','clouds','cloudmask','shadows','probability']
-        
+            
         
         # For some reason the reproject() works so that subsequent sampling returns the whole rectangular array
         # see https://stackoverflow.com/questions/64012752/gee-samplerectangle-returning-1x1-array
-        # oli8_clouds_im = oli8_clouds_ic.mosaic().reproject(crs = ee.Projection('EPSG:4326'), scale=10) #.clip(hyd_watershed)
+        # landsat_clouds_im = landsat_clouds_ic.mosaic().reproject(crs = ee.Projection('EPSG:4326'), scale=10) #.clip(hyd_watershed)
         
             
-        task_oli8 = ee.batch.Export.table.toDrive(
-            collection = oli8_ts,
-            selectors = oli8_output_bands + ['image_id'],
+        task_landsat = ee.batch.Export.table.toDrive(
+            collection = landsat_ts,
+            selectors = landsat_output_bands + ['image_id'],
             folder = timeseries_dir_name,
-            description = oli8_pt_filename,
-            fileNamePrefix = oli8_pt_filename)
+            description = landsat_pt_filename,
+            fileNamePrefix = landsat_pt_filename)
         
-        task_oli8.start()
+        task_landsat.start()
         
-        TimeseriesUpdateLocStatus(loc_id, oli8_colname, 'Running', timeseries_dir_path)
+        TimeseriesUpdateLocStatus(loc_id, landsat_colname, 'Running', timeseries_dir_path)
         
-        # print('Generating ' + oli8_pt_filename + '.csv')
-        infobox.info('Generating ' + oli8_pt_filename + '.csv')
+        # print('Generating ' + landsat_pt_filename + '.csv')
+        infobox.info('Generating ' + landsat_pt_filename + '.csv')
     
 def DownloadSamplePt(sample_pt_xy, loc_id, timeseries_dir_path, date_range, infobox):
     """
@@ -346,7 +353,10 @@ def DownloadSamplePt(sample_pt_xy, loc_id, timeseries_dir_path, date_range, info
     DownloadCHIRPSpt(sample_pt_xy, loc_id, timeseries_dir_path, date_range, infobox)
     
     # Export OLI8
-    DownloadOLI8pt(sample_pt_xy, loc_id, timeseries_dir_path, date_range, infobox)
+    # DownloadOLI8pt(sample_pt_xy, loc_id, timeseries_dir_path, date_range, infobox)
+
+    # Export Landsat
+    DownloadLandsatpt(sample_pt_xy, loc_id, timeseries_dir_path, date_range, infobox)
         
         
 #%%
