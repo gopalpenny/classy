@@ -40,6 +40,8 @@ importlib.reload(spf)
 # region_path = os.path.join(st.session_state.proj_path,"region")
 
 
+print('\n####################################################')
+print('######### INITIALIZING SAMPLE LOCATIONS PAGE ###########')
 
 if 'class_df' not in st.session_state:
     st.session_state['class_df'] = cpf.InitializeClassDF()
@@ -227,7 +229,7 @@ if st.session_state['status']['sample_status']:
     sample_pt_set_latlon = [sample_pt_set.geometry.y, sample_pt_set.geometry.x]
     
     
-    arrow_columns = st.sidebar.columns([2.5, 1,1,1.3, 1.5])
+    arrow_columns = st.sidebar.columns([2.3, 1,1,1.4, 1.5])
     
     if 'y_shift' not in st.session_state:
         st.session_state['y_shift'] = 0
@@ -283,14 +285,6 @@ if st.session_state['status']['sample_status']:
                      index = Classesidx[0])
         if ClassBox == 'Input new':
             new_class = st.text_input('New Class')
-    with set_columns[1]:
-        st.markdown('###')
-        st.text('')
-        st.button('SET', on_click = spf.set_shift, args = (loc_id, ClassBox, new_class,))
-    with set_columns[2]:
-        st.markdown('###')
-        st.text('')
-        st.button('RESET', on_click = spf.reset_shift, args = (loc_id, ))
         
         
     expander_go_to = st.sidebar.expander('Go to')
@@ -319,7 +313,7 @@ if st.session_state['status']['sample_status']:
     
     
     # m_folium = folium.Map()
-    m_folium = folium.Map(location = loc_pt_latlon, zoom_start = st.session_state['default_zoom_sample'])
+    m_folium = folium.Map(location = loc_pt_latlon_adj, zoom_start = st.session_state['default_zoom_sample'])
     tile = folium.TileLayer(
             tiles = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
             attr = 'Esri',
@@ -336,8 +330,8 @@ if st.session_state['status']['sample_status']:
         st.pyplot(p9.ggplot.draw(p_map))
     # get pixel polygonsloc_id, ic_name, coords_xy, ic_str, band_name,
     loc_pt_xy = [float(loc_pt_latlon_adj[1]), float(loc_pt_latlon_adj[0])]
-    landsat_px_poly = spf.get_pixel_poly(loc_id, 'oli8', loc_pt_xy, 'LANDSAT/LC08/C02/T1_L2', 'SR_B5', buffer_m = 0, vector_type = 'gpd', option = 'earthengine-save')
-    s2_px_poly = spf.get_pixel_poly(loc_id, 's2', loc_pt_xy, 'COPERNICUS/S2', 'B4', buffer_m = 0, vector_type = 'gpd', option = 'earthengine-save')
+    landsat_px_poly = spf.get_pixel_poly(loc_id, 'oli8', loc_pt_xy, 'LANDSAT/LC08/C02/T1_L2', 'SR_B5', buffer_m = 0, vector_type = 'gpd', option = 'local-enforce')
+    s2_px_poly = spf.get_pixel_poly(loc_id, 's2', loc_pt_xy, 'COPERNICUS/S2', 'B4', buffer_m = 0, vector_type = 'gpd', option = 'local-enforce')
     def style(feature):
         return {
             'fill': False,
@@ -348,6 +342,18 @@ if st.session_state['status']['sample_status']:
                     style_function = style).add_to(m_folium)
     folium.GeoJson(data = s2_px_poly['geometry'], 
                     style_function = style).add_to(m_folium)
+
+
+    with set_columns[1]:
+        st.markdown('###')
+        st.text('')
+        # landsat_px_poly = spf.get_pixel_poly(loc_id, 'oli8', loc_pt_xy, 'LANDSAT/LC08/C02/T1_L2', 'SR_B5', buffer_m = 0, vector_type = 'gpd', option = 'earthengine-save')
+        # s2_px_poly = spf.get_pixel_poly(loc_id, 's2', loc_pt_xy, 'COPERNICUS/S2', 'B4', buffer_m = 0, vector_type = 'gpd', option = 'earthengine-save')
+        st.button('SET', on_click = spf.set_shift, args = (loc_id, ClassBox, new_class, loc_pt_xy, ))
+    with set_columns[2]:
+        st.markdown('###')
+        st.text('')
+        st.button('RESET', on_click = spf.reset_shift, args = (loc_id, ))
     
     
     

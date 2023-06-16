@@ -150,14 +150,21 @@ def down_shift():
 def up_shift():
     st.session_state['y_shift'] += 10 + (st.session_state['shift30m'] * 20)
     
-def set_shift(loc_id, Class, new_class):
+def set_shift(loc_id, Class, new_class, loc_pt_xy):
     UpdateClassOnly(loc_id, Class,  new_class)
     UpdateSamplePt(loc_id)
+    get_pixel_poly(loc_id, 'oli8', loc_pt_xy, 'LANDSAT/LC08/C02/T1_L2', 'SR_B5', buffer_m = 0, vector_type = 'gpd', option = 'local-check')
+    get_pixel_poly(loc_id, 's2', loc_pt_xy, 'COPERNICUS/S2', 'B4', buffer_m = 0, vector_type = 'gpd', option = 'local-check')
     
 def reset_shift(loc_id):
     st.session_state['x_shift'] = 0
     st.session_state['y_shift'] = 0
     ResetSamplePt(loc_id)
+    loc_idx = st.session_state.class_df.loc_id == loc_id
+    orig_pt = st.session_state['sample_pts'].loc[loc_idx]
+    orig_xy = [float(orig_pt.orig_lon), float(orig_pt.orig_lat)]
+    get_pixel_poly(loc_id, 'oli8', orig_xy, 'LANDSAT/LC08/C02/T1_L2', 'SR_B5', buffer_m = 0, vector_type = 'gpd', option = 'local-check')
+    get_pixel_poly(loc_id, 's2', orig_xy, 'COPERNICUS/S2', 'B4', buffer_m = 0, vector_type = 'gpd', option = 'local-check')
     
     
 # %%
@@ -372,14 +379,25 @@ def get_pixel_poly(loc_id, ic_name, coords_xy, ic_str, band_name, buffer_m = 0, 
         band_name (_type_): earth engine band name to use for the pixel poly
         buffer_m (int, optional): Buffer (m) around which to get pixel polygons. Defaults to 0.
         vector_type (str, optional): gpd for geopandas or ee_fc to get a feature collection. Defaults to 'ee_fc'.
-        option (str, optional): 'local' or (default) 'earthengine-save' which retrieves and downloads
+        option (str, optional): 'local-check', 'local-enforce', 'earthengine' or (default) 'earthengine-save' which retrieves and downloads
 
     Returns:
-        _type_: _description_
+        gpd: geopandas dataframe with the pixel polygon
+
+        Options:
+
+        - 'local-check': use local file if it exists and pt falls within existing polygon, otherwise download from Earth Engine
+        - 'local-enforce': use local file if it exists, do not download from Earth Engine
+        - 'earthengine': download from Earth Engine but don't save
+        - 'earthengine-save': download from Earth Engine and save to local file
     """
     
     print('Running get_pixel_poly()')
     px_poly_dir_path = st.session_state['paths']['px_poly_dir_path']
+    if os.path.exists(px_poly_dir_path):
+        print('px_poly_dir_path exists')
+    else:
+        print('px_poly_dir_path does not exist')
     
     # print(px_poly_dir_path)
     if not os.path.exists(px_poly_dir_path):
@@ -389,25 +407,38 @@ def get_pixel_poly(loc_id, ic_name, coords_xy, ic_str, band_name, buffer_m = 0, 
     pt_xy_gpd = gpd.GeoSeries(pt_xy)
         
     loc_px_poly_path = os.path.join(px_poly_dir_path, 'px_poly_' + str(loc_id) + '_' + ic_name + '.shp')
+
+
+    print(option)
     
-    if os.path.exists(loc_px_poly_path) and option == 'local':
+    if (os.path.exists(loc_px_poly_path)) and (option in ['local-check', 'local-enforce']):
+
+        # raise Exception('stop')
         px_group_poly = gpd.read_file(loc_px_poly_path)
         # select the pixel poly as the one that contains the point
         px_poly = ([px_group_poly.loc[i:i] for 
                     i in px_group_poly.index 
-                    if pt_xy_gpd.within(px_group_poly.loc[i,'geometry'])[0]]) 
+                    if pt_xy_gpd.within(px_group_poly.loc[i,'geometry'])[0]])
     else:
         # create empty px_poly list to ensure execution of subsequent if statement
         px_poly = []
     
     if len(px_poly) == 0:
-        px_group_poly = get_ee_pixel_poly(coords_xy, ic_str, band_name, buffer_m, vector_type)
-        # select the pixel poly as the one that contains the point
-        px_poly = ([px_group_poly.loc[i:i] for 
-                    i in px_group_poly.index 
-                    if pt_xy_gpd.within(px_group_poly.loc[i,'geometry'])[0]])
-        if option == 'local' or option == 'earthengine-save':
-            px_group_poly.to_file(loc_px_poly_path)
+        if (os.path.exists(loc_px_poly_path)) and (option == 'local-enforce'):
+            # If the local file exists but the point is not within the polygon, get any polygon
+            px_poly = ([px_group_poly.loc[i:i] for 
+                        i in px_group_poly.index]) 
+        else:
+            # get the pixel poly from Earth Engine
+            print("Getting pixel poly from Earth Engine") 
+            px_group_poly = get_ee_pixel_poly(coords_xy, ic_str, band_name, buffer_m, vector_type)
+            # select the pixel poly as the one that contains the point
+            px_poly = ([px_group_poly.loc[i:i] for 
+                        i in px_group_poly.index 
+                        if pt_xy_gpd.within(px_group_poly.loc[i,'geometry'])[0]])
+            if option in ['local-check','local-enforce','earthengine-save']:
+                print('Saving pixel poly to local file')
+                px_group_poly.to_file(loc_px_poly_path)
 
         
     
