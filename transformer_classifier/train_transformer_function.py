@@ -50,7 +50,7 @@ if False:
     norms_path = "data/model_data_norms.pt"
     output_dir_path = "./s1_train"
 # %%
-def train_transformer_func(xnn, s1_data_path, s2_data_path, norms_path, labels_path, output_dir_path, n_epochs, lr, weight_decay):
+def train_transformer_func(xnn, s1_data_path, s2_data_path, norms_path, labels_path, output_dir_path, n_epochs, batch_size, lr, weight_decay):
 
     # %%
     if not os.path.exists(output_dir_path):
@@ -173,14 +173,21 @@ def train_transformer_func(xnn, s1_data_path, s2_data_path, norms_path, labels_p
     # %%
     # Custom collate function ## NOT WORKING
     def collate_batches(batch):
-        sequences = [torch.tensor(item) for item in batch]
-        padded_sequences = pad_sequence(sequences, batch_first=True)
-        return padded_sequences
+        s1_seq = [item[0] for item in batch]
+        s1_padded = pad_sequence(s1_seq, batch_first=True)
+        s2_seq = [item[1] for item in batch]
+        s2_padded = pad_sequence(s2_seq, batch_first=True)
+        y_seq = [item[2] for item in batch]
+        y_padded = pad_sequence(y_seq, batch_first=True)
+        locid_seq = [item[3] for item in batch]
+        locid_padded = torch.Tensor(locid_seq).float() #pad_sequence(locid_seq, batch_first=True)
+        # sequences = [torch.tensor(item) for item in batch]
+        return s1_padded, s2_padded, y_padded, locid_padded
 
     # Prep dataloaders
-    train_dl = DataLoader(data_train, batch_size = 1, drop_last = True, sampler = sampler) #, collate_fn = collate_batches)
-    valid_dl = DataLoader(data_valid, batch_size = 1, drop_last = False) #, collate_fn = collate_batches)
-    test_dl = DataLoader(data_test, batch_size = 1, drop_last = False) #, collate_fn = collate_batches)
+    train_dl = DataLoader(data_train, batch_size = batch_size, drop_last = True, sampler = sampler, collate_fn = collate_batches)
+    valid_dl = DataLoader(data_valid, batch_size = batch_size, drop_last = False, collate_fn = collate_batches)
+    test_dl = DataLoader(data_test, batch_size = batch_size, drop_last = False, collate_fn = collate_batches)
 
     # %%
     # test transformer

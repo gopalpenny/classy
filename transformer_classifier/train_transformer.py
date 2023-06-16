@@ -29,8 +29,9 @@ norms_path = cfg.norms_path
 output_dir_path = cfg.output_dir_path
 
 # %%
-# Number of training epochs
+# Number of training epochs and batch size
 n_epochs = cfg.n_epochs # of training epochs
+batch_size = cfg.batch_size # batch size
 
 # Parameters for the transformer
 # Note - dmodel must be divisible by nhead
@@ -57,15 +58,15 @@ xnn = TransformerClassifier(dmodel = dmodel, # embedding dimention (# columns pa
 
 # %%
 ###### TRAIN MODEL ON S1 AND S2 DATA ######
-train_transformer_func(xnn, s1_data_path, s2_data_path, norms_path, labels_path, output_dir_path, n_epochs, lr, weight_decay)
+train_transformer_func(xnn, s1_data_path, s2_data_path, norms_path, labels_path, output_dir_path, n_epochs, batch_size, lr, weight_decay)
 
 # %%
 
 ###### TRAIN MODEL ON S1 DATA ONLY ######
-# train_transformer_func(xnn, s1_data_path, None, norms_path, labels_path, output_dir_path, n_epochs)
+# train_transformer_func(xnn, s1_data_path, None, norms_path, labels_path, output_dir_path, n_epochs, batch_size, lr, weight_decay)
 
 # %%
 ###### TRAIN MODEL ON S2 DATA ONLY ######
-# train_transformer_func(xnn, None, s2_data_path, norms_path, labels_path, output_dir_path, n_epochs)
+# train_transformer_func(xnn, None, s2_data_path, norms_path, labels_path, output_dir_path, n_epochs, batch_size, lr, weight_decay)
 
 # %%
