@@ -180,6 +180,7 @@ def DownloadS1pt(sample_pt_xy, loc_id, timeseries_dir_path, date_range, infobox)
         
 def DownloadS2pt(sample_pt_xy, loc_id, timeseries_dir_path, date_range, infobox):
     
+    # sample_pt_xy = ee.Geometry.Point([15, 15])
     sample_pt_name = 'pt_ts_loc' + str(loc_id)
     
     sample_pt = ee.Geometry.Point(sample_pt_xy)
@@ -278,17 +279,16 @@ def DownloadLandsatpt(sample_pt_xy, loc_id, timeseries_dir_path, date_range, inf
             .filterMetadata('CLOUD_COVER', 'less_than', 75)
         landsat_clouds = rs.prep_landsat_clouds(landsat)
 
-        landsat_ic = landsat_clouds \
-          .filterBounds(sample_pt) \
+        landsat_clouds_ic = landsat_clouds \
           .filterDate(date_range[0],date_range[1])
           
-        get_qaband_clouds_shadows = rs.get_qaband_clouds_shadows_func(
-              qa_bandname = 'QA_PIXEL', 
-              cloud_bit = 3, 
-              shadow_bit = 4,
-              keep_orig_bands = True) 
-        landsat_clouds_ic = (landsat_ic
-          .map(get_qaband_clouds_shadows))
+        # get_qaband_clouds_shadows = rs.get_qaband_clouds_shadows_func(
+        #       qa_bandname = 'QA_PIXEL', 
+        #       cloud_bit = 3, 
+        #       shadow_bit = 4,
+        #       keep_orig_bands = True) 
+        # landsat_clouds_ic = (landsat_ic
+        #   .map(get_qaband_clouds_shadows))
           # .map(lambda im: im.addBands(im.expression('im.clouds | im.clouds_shadows', {'im' : im}).rename('cloudmask'))))
           
         # Get landsat pixel timeseries
