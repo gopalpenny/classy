@@ -123,26 +123,6 @@ loc_id = st.session_state['loc_id']
 
 
 
-def next_button():
-    class_df_filter = st.session_state.class_df_filter
-    current_loc_id = st.session_state.loc_id
-    new_locid = class_df_filter.loc_id[class_df_filter['loc_id'] > current_loc_id].min()
-    
-    # loc_id is max for filters, then cycle back to beginning
-    if np.isnan(new_locid):
-        new_locid = class_df_filter.loc_id.min()
-    st.session_state.loc_id = int(new_locid)
-    
-def prev_button():
-    class_df_filter = st.session_state.class_df_filter
-    current_loc_id = st.session_state.loc_id
-    new_locid = class_df_filter.loc_id[class_df_filter['loc_id'] < current_loc_id].max()
-    
-    # loc_id is min for filters, then cycle back to end
-    if np.isnan(new_locid):
-        new_locid = class_df_filter.loc_id.max()
-    st.session_state.loc_id = int(new_locid)
-
 def go_to_id_year(id_to_go, year):
     st.session_state.loc_id = int(id_to_go)
     st.session_state.classification_year = int(year)
@@ -186,9 +166,9 @@ with s2colC:
 s1colA, s1colB, s1colC = st.sidebar.columns([2.25,1.25,1.25])
 
 with s1colC:
-    st.button('Next', on_click = next_button, args = ())
+    st.button('Next', on_click = cpf.next_button, args = ())
 with s1colB:
-    st.button('Prev', on_click = prev_button, args = ())
+    st.button('Prev', on_click = cpf.prev_button, args = ())
 
 # side_layout = st.sidebar.beta_columns([1,1])
 with s1colA: #scol2 # side_layout[-1]:
@@ -210,7 +190,15 @@ region_shp = gpd.read_file(region_shp_path)
 
 
 if st.session_state['class_df_filter'][st.session_state['subclass_year']].isnull().all():
-    st.session_state['class_df_filter'][st.session_state['subclass_year']].iloc[0] = 'None'
+
+    # If there are no points in the filter, then set the Class and SubClass to all points
+    st.warning('No points matched the filter. Resetting filter to all Classes & Subclasses.')
+    cpf.apply_filter(lat_range = st.session_state['filterargs']['lat'], 
+                    lon_range = st.session_state['filterargs']['lon'], 
+                    class_type = 'Any', 
+                    subclass_type = 'Any', 
+                    downloaded = st.session_state['filterargs']['Downloaded'])
+    # st.session_state['class_df_filter'][st.session_state['subclass_year']].iloc[0] = 'None'
 
 p_map = (p9.ggplot() + 
           p9.geom_map(data = region_shp, mapping = p9.aes(), fill = 'white', color = "black") +
@@ -253,7 +241,11 @@ with scol1:
 Subclass_prev = list(st.session_state.class_df.loc[st.session_state.class_df.loc_id == loc_id, st.session_state['subclass_year']])[0]
 # Subclasses = list(st.session_state.class_df.Subclass.unique()) + ['Input new']
 Class_subset = st.session_state.class_df #[Class_subset.Class == ClassBox]
-Subclasses = list(Class_subset[st.session_state['subclass_year']].unique()) + ['Input new']
+# Subclasses = list(Class_subset[st.session_state['subclass_year']].unique()) + ['Input new']
+# print('Class_subset')
+# print(Class_subset)
+Class_subset_names = Class_subset.columns.tolist()
+Subclasses = np.unique(np.concatenate([Class_subset[col].astype('str') for col in Class_subset_names if 'Subclass' in col])).tolist() + ['Input new']
 Subclasses = [x for x in Subclasses if x != '-']
 Subclasses = ['-'] + list(compress(Subclasses, [str(x) != 'nan' for x in Subclasses]))
 Subclassesidx = [i for i in range(len(Subclasses)) if Subclasses[i] == Subclass_prev] + [0]
@@ -276,10 +268,10 @@ with st.sidebar:
 
 # %%
 
-def next_button():
-    st.session_state.loc_id += 1
-def prev_button():
-    st.session_state.loc_id += 1
+# def next_button():
+#     st.session_state.loc_id += 1
+# def prev_button():
+#     st.session_state.loc_id += 1
 # with scol1: #side_layout[0]:
 #     st.text(' ')
 #     st.text(' ')
@@ -388,11 +380,13 @@ with sideexp:
         class_type = st.selectbox('Class (' + cur_class_type + ')', options = class_types, 
                                    index = class_types_idx)
     
+    # Only filter points in current classification year
     subclass_types = ['Any'] + list(st.session_state.class_df[st.session_state['subclass_year']].unique())
+    # subclass_types = ['Any'] + np.unique(np.concatenate([Class_subset[col].astype('str') for col in Class_subset_names if 'Subclass' in col])).tolist()
     cur_subclass_type = st.session_state['filterargs']['Subclass']
     subclass_types_idx = [i for i in range(len(subclass_types)) if subclass_types[i] == cur_subclass_type][0]
     with se1col2:
-        subclass_type = st.selectbox('Sub-class (' + cur_subclass_type + ')', options = subclass_types, 
+        subclass_type = st.selectbox(str(st.session_state['subclass_year']) + ' (' + cur_subclass_type + ')', options = subclass_types, 
                                    index = subclass_types_idx)
                               
     cur_lat = st.session_state['filterargs']['lat']
@@ -474,34 +468,30 @@ if st.session_state['show_snapshots']:
         dates_datetime = [x.to_pydatetime() for x in list(OrderedDict.fromkeys(tsS2['datetime']))]
         dates_str = [datetime.strftime(x, '%Y-%m-%d') for x in dates_datetime]
 
-    def getDatesInRange(all_datetimes, start_date_inclusive, end_date_exclusive):
+    def getDatesInRange(all_datetimes, start_date_inclusive, end_date_exclusive, no_dates_month_buff = 0):
         dates_str = [datetime.strftime(x, '%Y-%m-%d') for x in dates_datetime if (start_date_inclusive <= x < end_date_exclusive)]
+        if len(dates_str) == 0:
+            start_date_inclusive += relativedelta(months = no_dates_month_buff)
+            end_date_exclusive += relativedelta(months = no_dates_month_buff)
+            dates_str = [datetime.strftime(x, '%Y-%m-%d') for x in dates_datetime if (start_date_inclusive <= x < end_date_exclusive)]
         if len(dates_str) == 0:
             dates_str = ["No dates in range"]
             # select_datetime = month_seq[0] + (month_seq[1] - month_seq[0])/2
             # datetime_nearest = getNearestDatetime(all_datetimes, select_datetime)
             # dates_str = datetime.strptime(datetime_nearest, '%Y-%m-%d')
-                                            
         return dates_str
 
         
     with st_snapshots_dates_cols[0]:
-        dates_str_1 = getDatesInRange(dates_datetime, month_seq[0], month_seq[1])
+        dates_str_1 = getDatesInRange(dates_datetime, month_seq[0], month_seq[1], -1)
         im_date1 = st.selectbox('Select date 1', options = dates_str_1)
-        # # Select date via slider
-        # init_value = month_seq[0] + (month_seq[1] - month_seq[0])/2
-        # im_date1_slider = st.slider('Select date 1', min_value = month_seq[0], max_value = month_seq[1], value = init_value)
-        # im_date1_diffs = np.abs(tsS2['datetime'] - im_date1_slider)
-        # im_datetime1 = [tsS2['datetime'].iloc[i] for i in range(len(im_date1_diffs)) if np.min(im_date1_diffs) == im_date1_diffs.iloc[i]][0]
-        # im_date1 = datetime.strftime(im_datetime1, '%Y-%m-%d')
 
-        
     with st_snapshots_dates_cols[1]:
         dates_str_2 = getDatesInRange(dates_datetime, month_seq[1], month_seq[2])
         im_date2 = st.selectbox('Select date 2', options = dates_str_2)
         
     with st_snapshots_dates_cols[2]:
-        dates_str_3 = getDatesInRange(dates_datetime, month_seq[2], month_seq[3])
+        dates_str_3 = getDatesInRange(dates_datetime, month_seq[2], month_seq[3], 1)
         im_date3 = st.selectbox('Select date 3', options = dates_str_3)
 
         snapshot_dates = [im_date1, im_date2, im_date3]
