@@ -186,6 +186,7 @@ def train_transformer_func(xnn, s1_data_path, s2_data_path, norms_path, labels_p
 
     # Prep dataloaders
     train_dl = DataLoader(data_train, batch_size = batch_size, drop_last = True, sampler = sampler, collate_fn = collate_batches)
+    train_dl_biased = DataLoader(data_train, batch_size = batch_size, drop_last = True, collate_fn = collate_batches)
     valid_dl = DataLoader(data_valid, batch_size = batch_size, drop_last = False, collate_fn = collate_batches)
     test_dl = DataLoader(data_test, batch_size = batch_size, drop_last = False, collate_fn = collate_batches)
 
@@ -214,20 +215,6 @@ def train_transformer_func(xnn, s1_data_path, s2_data_path, norms_path, labels_p
     s1, s2, y, _ = next(iter(train_dl))
     # s2x = s2[:, :, 0:4]
     # xnn(s1, s2)
-
-    # %%
-
-    def get_num_correct(model_batch_out, y_batch):
-        pred = torch.argmax(model_batch_out, dim = 1)
-        actual = y_batch
-        # actual = torch.argmax(y_batch, dim = 1)
-        num_correct = torch.sum(pred == actual).item()
-        # flog.write(locals(), 'type',type(num_correct))
-        # x = num_correct# item()
-        # flog.write(locals(), 'num_correct', num_correct.item())
-        return num_correct
-
-
     # %%
 
     # Training loop
@@ -290,55 +277,21 @@ def train_transformer_func(xnn, s1_data_path, s2_data_path, norms_path, labels_p
         loss_hist_train[epoch] /= float(len(train_dl.dataset))
         accuracy_hist_train[epoch] /= float(len(train_dl.dataset))
         
-        with torch.no_grad():
-            for s1_batch, s2_batch, y_batch, _ in valid_dl:
-
-                # Forward pass
-                pred = xnn(s1_batch, s2_batch)
-                
-                y_batch = y_batch.flatten().type(torch.LongTensor)
-                
-                # flog.write(locals(), 'pred',pred)
-                # flog.write(locals(), 'target',y_batch)
-                loss = loss_fn(pred, y_batch)
-
-                # Accumulate loss and accuracy
-                loss_hist_valid[epoch] += loss.item() * y_batch.size(0)
-                accuracy_hist_valid[epoch] += get_num_correct(pred, y_batch)
-
-            loss_hist_valid[epoch] /= float(len(valid_dl.dataset))
-            accuracy_hist_valid[epoch] /= float(len(valid_dl.dataset))
+        loss_hist_valid[epoch], accuracy_hist_valid[epoch] = get_dataset_accuracy(xnn, valid_dl, loss_fn)
             
         flog.write(locals(), 'Epoch [{epoch+1}/{n_epochs}], Loss: {loss_hist_train[epoch]:.4f}, ' + 
                    'Accuracy: {accuracy_hist_train[epoch]:.4f} ' +
                    'Val Accuracy: {accuracy_hist_valid[epoch]:.4f}')
         
     # %%
+    # Get test loss and accuracy
+    test_loss, test_accuracy = get_dataset_accuracy(xnn, test_dl, loss_fn)    
+    flog.write(locals(), 'Test Loss: {test_loss:.4f}, Test Accuracy: {test_accuracy:.4f}')
 
-    loss_hist_test = 0
-    accuracy_hist_test = 0
-    with torch.no_grad():
-        for s1_batch, s2_batch, y_batch, _ in test_dl:
-
-            # Forward pass
-            pred = xnn(s1_batch, s2_batch)
-            
-            y_batch = y_batch.flatten().type(torch.LongTensor)
-            
-            # flog.write(locals(), 'pred',pred)
-            # flog.write(locals(), 'target',y_batch)
-            loss = loss_fn(pred, y_batch)
-
-            # Accumulate loss and accuracy
-            loss_hist_test += loss.item() * y_batch.size(0)
-            accuracy_hist_test += get_num_correct(pred, y_batch)
-
-        loss_hist_test /= float(len(test_dl.dataset))
-        accuracy_hist_test /= float(len(test_dl.dataset))
+    # Get training loss and accuracy (biased)
+    train_biased_loss, train_biased_accuracy = get_dataset_accuracy(xnn, train_dl_biased, loss_fn)    
+    flog.write(locals(), 'Train Loss (biased): {train_biased_loss:.4f}, Train Accuracy (biased): {train_biased_accuracy:.4f}')
         
-    flog.write(locals(), 'Test Loss: {loss_hist_test:.4f}, Test Accuracy: {accuracy_hist_test:.4f}')
-        
-
     torch.save(xnn, os.path.join(output_dir_path, "xnn_trained.pt"))    
 
    # %%
@@ -385,6 +338,41 @@ def train_transformer_func(xnn, s1_data_path, s2_data_path, norms_path, labels_p
 
     # sys.stdout = orig_stdout
     # print_out.close()
+
+
+def get_num_correct(model_batch_out, y_batch):
+    pred = torch.argmax(model_batch_out, dim = 1)
+    actual = y_batch
+    # actual = torch.argmax(y_batch, dim = 1)
+    num_correct = torch.sum(pred == actual).item()
+    # flog.write(locals(), 'type',type(num_correct))
+    # x = num_correct# item()
+    # flog.write(locals(), 'num_correct', num_correct.item())
+    return num_correct
+
+def get_dataset_accuracy(xnnmodel, dl, loss_fn):
+    loss_val = 0
+    accuracy_val = 0
+    with torch.no_grad():
+        for s1_batch, s2_batch, y_batch, _ in dl:
+
+            # Forward pass
+            pred = xnnmodel(s1_batch, s2_batch)
+            
+            y_batch = y_batch.flatten().type(torch.LongTensor)
+            
+            # flog.write(locals(), 'pred',pred)
+            # flog.write(locals(), 'target',y_batch)
+            loss = loss_fn(pred, y_batch)
+
+            # Accumulate loss and accuracy
+            loss_val += loss.item() * y_batch.size(0)
+            accuracy_val += get_num_correct(pred, y_batch)
+
+        loss_val /= float(len(dl.dataset))
+        accuracy_val /= float(len(dl.dataset))
+    
+    return loss_val, accuracy_val
 
 def get_fstring(fstring, locals, globals = None):
 
