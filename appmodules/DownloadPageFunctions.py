@@ -198,9 +198,7 @@ def DownloadS2pt(sample_pt_xy, loc_id, timeseries_dir_path, date_range, infobox)
         
     elif s2_pt_status != 'nan':
         msgs2 = s2_pt_filename + ' status is ' + str(s2_pt_status)
-        # print(msgs2)
         infobox.info(msgs2)
-        # st.write(type(s2_pt_status))
     else:
     
         s2_output_bands = ['B8','B4','B3','B2','clouds','cloudmask','shadows','probability']
@@ -217,7 +215,8 @@ def DownloadS2pt(sample_pt_xy, loc_id, timeseries_dir_path, date_range, infobox)
             'BUFFER' : 50
         }
         
-        s2_clouds_ic = ees.get_s2_sr_cld_col(sample_pt, s2params) \
+        s2_clouds_ic_prep = ees.get_s2_sr_cld_col(sample_pt, s2params) 
+        s2_clouds_ic = s2_clouds_ic_prep \
           .map(ees.add_cld_shadow_mask_func(s2params))
         
         # For some reason the reproject() works so that subsequent sampling returns the whole rectangular array

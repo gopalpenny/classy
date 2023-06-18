@@ -85,7 +85,7 @@ def GenLandsatData(loc_id, date_range):
     landsat['cloudmask'] =  landsat['clouds_shadows']
     
     landsat_long = landsat.melt(id_vars = ['datetime','cloudmask'], value_vars = ['swir2','swir1','nir','red','green','blue','NDVI'])
-    landsat_long['source'] = 'Landsat 8'
+    landsat_long['source'] = 'Landsat'
     
     return landsat_long
     
