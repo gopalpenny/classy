@@ -313,9 +313,9 @@ tile = folium.TileLayer(
 
 # get pixel polygonsloc_id, ic_name, coords_xy, ic_str, band_name,
 loc_pt_xy = [float(loc_pt_latlon[1]), float(loc_pt_latlon[0])]
-landsat_px_poly = spf.get_pixel_poly(loc_id,'oli8', loc_pt_xy, 'LANDSAT/LC08/C02/T1_L2', 'SR_B5', buffer_m = 60, vector_type = 'gpd', option = 'local')
+landsat_px_poly = spf.get_pixel_poly(loc_id,'oli8', loc_pt_xy, 'LANDSAT/LC08/C02/T1_L2', 'SR_B5', buffer_m = 60, vector_type = 'gpd', option = 'local-check')
 last_timer = print_time('Done getting landsat_px_poly', last_timer)
-s2_px_poly = spf.get_pixel_poly(loc_id,'s2',loc_pt_xy, 'COPERNICUS/S2', 'B4', buffer_m = 60, vector_type = 'gpd', option = 'local')
+s2_px_poly = spf.get_pixel_poly(loc_id,'s2',loc_pt_xy, 'COPERNICUS/S2', 'B4', buffer_m = 60, vector_type = 'gpd', option = 'local-check')
 last_timer = print_time('Done getting s2_px_poly', last_timer)
 def style(feature):
     return {

@@ -393,6 +393,10 @@ def get_pixel_poly(loc_id, ic_name, coords_xy, ic_str, band_name, buffer_m = 0, 
     """
     
     print('Running get_pixel_poly()')
+
+    if not option in ['local-check', 'local-enforce', 'earthengine', 'earthengine-save']:
+        raise Exception("option must be 'local-check', 'local-enforce', 'earthengine', or 'earthengine-save'")
+    
     px_poly_dir_path = st.session_state['paths']['px_poly_dir_path']
     if os.path.exists(px_poly_dir_path):
         print('px_poly_dir_path exists')
