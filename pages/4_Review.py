@@ -44,7 +44,8 @@ importlib.reload(cpf)
     
 # %%
 
-class_path = '/Users/gopal/Google Drive/_Research/Research projects/ML/classapp/app_data/TGHalli/TGHalli_classification/location_classification.csv'
+# class_path = '/Users/gopal/Google Drive/_Research/Research projects/ML/classapp/app_data/TGHalli/TGHalli_classification/location_classification.csv'
+class_path = st.session_state['paths']['class_path']
 class_df = pd.read_csv(class_path)
 class_df_long = class_df.melt(id_vars = ('loc_id','Class'), 
               value_vars = [col for col in class_df.columns if 'Subclass' in col],
@@ -54,7 +55,8 @@ class_df_long['Year'] = class_df_long.SubclassYear.str.extract(r'(\d+)').astype(
 # class_df_long
 
 # %%
-timeseries_dir_path = '/Users/gopal/Google Drive/_Research/Research projects/ML/classapp/app_data/TGHalli/TGHalli_download_timeseries'
+# timeseries_dir_path = '/Users/gopal/Google Drive/_Research/Research projects/ML/classapp/app_data/TGHalli/TGHalli_download_timeseries'
+timeseries_dir_path = st.session_state['paths']['timeseries_dir_path']
 # %%
 
 def get_yearless_date(df):
@@ -79,13 +81,13 @@ def prep_label_timeseries_all(class_df_long, generate_ts = False, timeseries_dir
 
     else:
         print('Generating timeseries files')
-        progress_text = "Operation in progress. Please wait."
-        # my_bar = st.progress(0, text=progress_text)
+        progress_text = "Combining timeseries for all labeled points."
+        my_bar = st.progress(0, text=progress_text)
 
         num_labels = class_df_long.shape[0]
         for i in np.arange(num_labels):
             # print(i)
-            # my_bar.progress(i / num_labels * 100, text=progress_text)
+            my_bar.progress(i / num_labels, text=progress_text)
             loc_id = class_df_long.loc_id.iloc[i]
             year = class_df_long.Year.iloc[i]
             date_range = (str(year) + '-06-01', str(year + 1) + '-06-01')
@@ -144,6 +146,9 @@ s2_bands = ['B8','B4','B3','B2','NDVI']
 landsat_bands = ['swir2','swir1','nir','red','green','blue','NDVI']
 
 with st.sidebar:
+    st.button("Refresh data", key = 'refresh_data', 
+              on_click = prep_label_timeseries_all, 
+              args = (class_df_long, True, timeseries_dir_path, ))
     st.multiselect('Subclasses', options = Subclass_options, key = 'review_subclasses')
     st.multiselect('S1 bands', options = s1_bands, key = 'review_s1_bands')
     st.multiselect('S2 bands', options = s2_bands, key = 'review_s2_bands')
