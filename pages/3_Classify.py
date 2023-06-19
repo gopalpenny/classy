@@ -422,8 +422,8 @@ last_timer = print_time('Done setting up side expander.', last_timer)
 start_date = datetime.strptime(date_range[0], '%Y-%m-%d')
 end_date = datetime.strptime(date_range[1], '%Y-%m-%d')
 
-tsS2 = mf.GenS2data(loc_id, date_range).query('cloudmask == 0')
-landsat = mf.GenLandsatData(loc_id, date_range) #.query('clouds_shadows==0')
+# tsS2 = mf.GenS2data(loc_id).query('cloudmask == 0')
+# landsat = mf.GenLandsatData(loc_id) #.query('clouds_shadows==0')
 last_timer = print_time('Done getting timeseries data via GenS2data() and GenLandsatData()', last_timer)
 
 # st.markdown("""###""")

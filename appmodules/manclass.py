@@ -37,8 +37,10 @@ def testfunc():
 
 
 # def GetLocTimeseries(loc_id, timeseries_dir_path, plot_theme):
-def GenS1data(loc_id, date_range):
-    timeseries_dir_path = st.session_state['paths']['timeseries_dir_path']
+def GenS1data(loc_id, date_range = None, format = 'long', timeseries_dir_path = None):
+    if timeseries_dir_path == None:
+        timeseries_dir_path = st.session_state['paths']['timeseries_dir_path']
+
     s1_filename = 'pt_ts_loc' + str(loc_id) + '_s1.csv'
     s1 = pd.read_csv(os.path.join(timeseries_dir_path,s1_filename))
     
@@ -47,15 +49,24 @@ def GenS1data(loc_id, date_range):
     s1['datestr'] = [re.sub('.*?_1S.V_([0-9T]+)_.*','\\1',x) for x in s1['image_id']]
     
     s1['datetime'] = pd.to_datetime(s1['datestr'])
+
+    if date_range != None:
+        s1 = s1.query('datetime >= @date_range[0] & datetime <= @date_range[1]')
     
-    s1_long = s1.melt(id_vars = 'datetime', value_vars = 'backscatter')
-    s1_long['source'] = 'Sentinel 1'
+    if format == 'long':
+        s1 = s1.melt(id_vars = 'datetime', value_vars = 'backscatter')
+    else:
+        s1 = s1[['datetime','backscatter']]
+
+    s1['source'] = 'Sentinel 1'
     
-    return s1_long
+    return s1
 
 
-def GenS2data(loc_id, date_range):
-    timeseries_dir_path = st.session_state['paths']['timeseries_dir_path']
+def GenS2data(loc_id, date_range = None, format = 'long', timeseries_dir_path = None):
+    if timeseries_dir_path == None:
+        timeseries_dir_path = st.session_state['paths']['timeseries_dir_path']
+
     s2_filename = 'pt_ts_loc' + str(loc_id) + '_s2.csv'
     s2 = pd.read_csv(os.path.join(timeseries_dir_path,s2_filename))
         
@@ -63,17 +74,26 @@ def GenS2data(loc_id, date_range):
     s2['datestr'] = [re.sub('([0-9T])_.*','\\1',x) for x in s2['image_id']]
     
     s2['datetime'] = pd.to_datetime(s2['datestr'])
+
+    if date_range != None:
+        s2 = s2.query('datetime >= @date_range[0] & datetime <= @date_range[1]')
+
     s2 = s2.assign(NDVI = lambda df: (df.B8 - df.B4)/(df.B8 + df.B4))
     # s2 = s2.assign(NDWI = lambda df: (df.B8 - df.B4)/(df.B8 + df.B4))
     
-    
-    s2_long = s2.melt(id_vars = ['datetime','cloudmask'], value_vars = ['B8','B4','B3','B2','NDVI'])
-    s2_long['source'] = 'Sentinel 2'
-    
-    return s2_long
+    if format == 'long':
+        s2 = s2.melt(id_vars = 'datetime', value_vars = ['B8','B4','B3','B2','NDVI'])
+    else:
+        s2 = s2[['datetime','cloudmask','B8','B4','B3','B2','NDVI']]
 
-def GenLandsatData(loc_id, date_range):
-    timeseries_dir_path = st.session_state['paths']['timeseries_dir_path'] 
+    s2['source'] = 'Sentinel 2'
+    
+    return s2
+
+def GenLandsatData(loc_id, date_range = None, format = 'long', timeseries_dir_path = None):
+    if timeseries_dir_path == None:
+        timeseries_dir_path = st.session_state['paths']['timeseries_dir_path']
+
     landsat_filename = 'pt_ts_loc' + str(loc_id) + '_landsat.csv'
     landsat = pd.read_csv(os.path.join(timeseries_dir_path,landsat_filename))
         
@@ -81,13 +101,21 @@ def GenLandsatData(loc_id, date_range):
     landsat['datestr'] = [re.sub('.*_([0-9]+)','\\1',x) for x in landsat['image_id']]
     
     landsat['datetime'] = pd.to_datetime([datetime.strptime(x, '%Y%m%d') for x in landsat['datestr']])
+    
+    if date_range != None:
+        landsat = landsat.query('datetime >= @date_range[0] & datetime <= @date_range[1]')
+    
     landsat = landsat.assign(NDVI = lambda df: (df.nir - df.red)/(df.nir + df.red))
     landsat['cloudmask'] =  landsat['clouds_shadows']
     
-    landsat_long = landsat.melt(id_vars = ['datetime','cloudmask'], value_vars = ['swir2','swir1','nir','red','green','blue','NDVI'])
-    landsat_long['source'] = 'Landsat'
+    if format == 'long':
+        landsat = landsat.melt(id_vars = ['datetime','cloudmask'], value_vars = ['swir2','swir1','nir','red','green','blue','NDVI'])
+    else:
+        landsat = landsat[['datetime','cloudmask','swir2','swir1','nir','red','green','blue','NDVI']]
     
-    return landsat_long
+    landsat['source'] = 'Landsat'
+    
+    return landsat
     
 
 
@@ -132,10 +160,10 @@ def plotTimeseries(loc_id, date_range, month_seq, snapshot_dates, spectra_list):
     print('Running manclass.plotTimeseries()')
     timeseries_dir_path = st.session_state['paths']['timeseries_dir_path']
     
-    s1 = GenS1data(loc_id, date_range)
-    s2 = GenS2data(loc_id, date_range)
+    s1 = GenS1data(loc_id)
+    s2 = GenS2data(loc_id)
     s2 = s2[s2['variable'] == 'NDVI']
-    landsat = GenLandsatData(loc_id, date_range)
+    landsat = GenLandsatData(loc_id)
     landsat = landsat[landsat['variable'] == 'NDVI']
     chirps = GenCHIRPSdata(loc_id, date_range)
     
@@ -243,8 +271,8 @@ def plotTimeseries(loc_id, date_range, month_seq, snapshot_dates, spectra_list):
 def plotSpectra(loc_id, date_range, spectra_list):
     timeseries_dir_path = st.session_state['paths']['timeseries_dir_path']
     
-    s1 = GenS1data(loc_id, date_range)
-    s2 = GenS2data(loc_id, date_range)
+    s1 = GenS1data(loc_id)
+    s2 = GenS2data(loc_id)
     sentinel = pd.concat([s1, s2]).query('cloudmask != 1')
     # sentinel['date'] = [datetime.strftime(x, '%Y-%m-%d') for x in sentinel['datetime']]
     
