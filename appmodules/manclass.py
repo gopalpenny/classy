@@ -82,7 +82,7 @@ def GenS2data(loc_id, date_range = None, format = 'long', timeseries_dir_path = 
     # s2 = s2.assign(NDWI = lambda df: (df.B8 - df.B4)/(df.B8 + df.B4))
     
     if format == 'long':
-        s2 = s2.melt(id_vars = 'datetime', value_vars = ['B8','B4','B3','B2','NDVI'])
+        s2 = s2.melt(id_vars = ['datetime', 'cloudmask'], value_vars = ['B8','B4','B3','B2','NDVI'])
     else:
         s2 = s2[['datetime','cloudmask','B8','B4','B3','B2','NDVI']]
 

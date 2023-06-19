@@ -188,8 +188,15 @@ last_timer = print_time('Done getting coordinates for loc_id: ' + str(loc_id), l
 region_shp_path = st.session_state['paths']['region_shp_path']
 region_shp = gpd.read_file(region_shp_path)
 
+print('#### DEBUG LINE ######')
+no_classes_set = st.session_state['class_df'][st.session_state['subclass_year']].isnull().all()
+no_classes_in_filter = st.session_state['class_df_filter'][st.session_state['subclass_year']].isnull().all()
 
-if st.session_state['class_df_filter'][st.session_state['subclass_year']].isnull().all():
+print('loc_id', loc_id)
+
+print('class_df_filter', st.session_state['class_df_filter'])
+# print('no_classes_in_filter', no_classes_in_filter)
+if no_classes_in_filter and not no_classes_set:
 
     # If there are no points in the filter, then set the Class and SubClass to all points
     st.warning('No points matched the filter. Resetting filter to all Classes & Subclasses.')
@@ -203,11 +210,15 @@ if st.session_state['class_df_filter'][st.session_state['subclass_year']].isnull
 p_map = (p9.ggplot() + 
           p9.geom_map(data = region_shp, mapping = p9.aes(), fill = 'white', color = "black") +
            p9.geom_map(data = allpts, mapping = p9.aes(), fill = 'lightgray', shape = 'o', color = None, size = 1, alpha = 1) +
-            p9.geom_map(data = st.session_state['class_df_filter'], mapping = p9.aes(fill = st.session_state['subclass_year']), shape = 'o', color = None, size = 2) +
-           p9.geom_map(data = loc_pt, mapping = p9.aes(), fill = 'black', shape = 'o', color = 'black', size = 4) +
-          mf.MapTheme() + 
+           mf.MapTheme() + 
           p9.theme(legend_position = (0.8,0.7), figure_size = (4,4)) +
           p9.coord_equal())
+if not no_classes_in_filter:
+    p_map = (p_map +
+    p9.geom_map(data = st.session_state['class_df_filter'], mapping = p9.aes(fill = st.session_state['subclass_year']), shape = 'o', color = None, size = 2))
+
+p_map = (p_map +
+           p9.geom_map(data = loc_pt, mapping = p9.aes(), fill = 'black', shape = 'o', color = 'black', size = 4))
 
 last_timer = print_time('Done creating sidebar map', last_timer)
 # %%
@@ -422,7 +433,9 @@ last_timer = print_time('Done setting up side expander.', last_timer)
 start_date = datetime.strptime(date_range[0], '%Y-%m-%d')
 end_date = datetime.strptime(date_range[1], '%Y-%m-%d')
 
-tsS2 = mf.GenS2data(loc_id).query('cloudmask == 0')
+tsS2 = mf.GenS2data(loc_id) #
+print('tsS2', tsS2)
+tsS2 = tsS2.query('cloudmask == 0')
 # landsat = mf.GenLandsatData(loc_id) #.query('clouds_shadows==0')
 last_timer = print_time('Done getting timeseries data via GenS2data() and GenLandsatData()', last_timer)
 
