@@ -282,9 +282,10 @@ if st.session_state['status']['sample_status']:
     with set_columns[0]:
         ClassBox = st.selectbox("Class: " + str(Class_prev), 
                      options = Classes, 
-                     index = Classesidx[0])
+                     index = Classesidx[0],
+                     key = 'spf_classbox')
         if ClassBox == 'Input new':
-            new_class = st.text_input('New Class')
+            new_class = st.text_input('New Class', key = 'spf_new_class')
         
         
     expander_go_to = st.sidebar.expander('Go to')
@@ -349,7 +350,7 @@ if st.session_state['status']['sample_status']:
         st.text('')
         # landsat_px_poly = spf.get_pixel_poly(loc_id, 'oli8', loc_pt_xy, 'LANDSAT/LC08/C02/T1_L2', 'SR_B5', buffer_m = 0, vector_type = 'gpd', option = 'earthengine-save')
         # s2_px_poly = spf.get_pixel_poly(loc_id, 's2', loc_pt_xy, 'COPERNICUS/S2', 'B4', buffer_m = 0, vector_type = 'gpd', option = 'earthengine-save')
-        st.button('SET', on_click = spf.set_shift, args = (loc_id, ClassBox, new_class, loc_pt_xy, ))
+        st.button('SET', on_click = spf.set_shift, args = (loc_id, st.session_state['spf_classbox'], new_class, loc_pt_xy, ))
     with set_columns[2]:
         st.markdown('###')
         st.text('')

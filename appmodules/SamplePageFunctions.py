@@ -220,6 +220,7 @@ def go_to_id(id_to_go):
 def UpdateClassOnly(loc_id, Class,  new_class):
     class_path = st.session_state['paths']['class_path']
     loc_idx = st.session_state.class_df.loc_id == loc_id
+    print('Class:', Class)
     
     if Class == 'Input new':
         st.session_state.class_df.loc[loc_idx, 'Class'] = new_class
