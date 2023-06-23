@@ -87,7 +87,7 @@ def prep_label_timeseries_all(class_df_long, generate_ts = False, timeseries_dir
         num_labels = class_df_long.shape[0]
         for i in np.arange(num_labels):
             # print(i)
-            my_bar.progress(i / num_labels, text=progress_text)
+            my_bar.progress(i / (num_labels*1.2), text=progress_text)
             loc_id = class_df_long.loc_id.iloc[i]
             year = class_df_long.Year.iloc[i]
             date_range = (str(year) + '-06-01', str(year + 1) + '-06-01')
@@ -102,6 +102,9 @@ def prep_label_timeseries_all(class_df_long, generate_ts = False, timeseries_dir
             loc_ts_landsat = mf.GenLandsatData(loc_id, date_range, 'wide', timeseries_dir_path)
             loc_ts_landsat['loc_id'] = loc_id
             loc_ts_landsat['Year'] = year
+            loc_ts_landsat['MNDWI'] = (loc_ts_landsat['green'] - loc_ts_landsat['swir1']) / (loc_ts_landsat['green'] + loc_ts_landsat['swir1'])
+            loc_ts_landsat['EVI'] = 2.5 * (loc_ts_landsat['nir'] - loc_ts_landsat['red']) / (loc_ts_landsat['nir'] + 6 * loc_ts_landsat['red'] - 7 * loc_ts_landsat['blue'] + 1)
+            loc_ts_landsat['GCVI'] = (loc_ts_landsat.nir / loc_ts_landsat.green) - 1
 
             # combine loc_id / year data with previous data
             if i == 0:
@@ -115,22 +118,29 @@ def prep_label_timeseries_all(class_df_long, generate_ts = False, timeseries_dir
         ts_s2 = pd.merge(ts_s2, class_df_long[['loc_id','Year','Subclass']], on = ['loc_id', 'Year'])
         ts_landsat = pd.merge(ts_landsat, class_df_long[['loc_id','Year','Subclass']], on = ['loc_id', 'Year'])
 
+        my_bar.progress(1.05 / 1.2, text=progress_text)
+
         ts_s1['date_yearless'] = get_yearless_date(ts_s1)
         ts_s2['date_yearless'] = get_yearless_date(ts_s2)
         ts_landsat['date_yearless'] = get_yearless_date(ts_landsat)
+
+        my_bar.progress(1.1 / 1.2, text=progress_text)
 
         ts_s1 = ts_s1.drop(['datetime','source'], axis = 1)
         ts_s2 = ts_s2.query('cloudmask == 0').drop(['datetime','source'], axis = 1)
         ts_landsat = ts_landsat.query('cloudmask == 0').drop(['datetime','source'], axis = 1)
 
+        my_bar.progress(1.15 / 1.2, text=progress_text)
+
         ts_s1.to_csv(label_timeseries_s1_path, index = False)
         ts_s2.to_csv(label_timeseries_s2_path, index = False)
         ts_landsat.to_csv(label_timeseries_landsat_path, index = False)
 
+        my_bar.progress(1.2 / 1.2, text=progress_text)
+
     return ts_s1, ts_s2, ts_landsat
 
 # %%
-print('hello world')
 ts_s1, ts_s2, ts_landsat = prep_label_timeseries_all(class_df_long, generate_ts = False, timeseries_dir_path = timeseries_dir_path)
 
 # %%
@@ -143,7 +153,7 @@ ts_s1_long = ts_s1 \
 Subclass_options = pd.unique(ts_s1.Subclass)
 s1_bands = ['backscatter']
 s2_bands = ['B8','B4','B3','B2','NDVI']
-landsat_bands = ['swir2','swir1','nir','red','green','blue','NDVI']
+landsat_bands = ['swir2','swir1','nir','red','green','blue','NDVI','MNDWI','EVI','GCVI']
 
 with st.sidebar:
     st.button("Refresh data", key = 'refresh_data', 
@@ -162,6 +172,7 @@ landsat_vars = st.session_state['review_landsat_bands']
 
 # %%
 with review_subset_expander:
+    st.info('Filter observations by pandas query string. For example: NDVI > 0.5 and swir1 < 40000')
     st.text_input('S1 pandas query', key = 'subset_s1_query')
     st.text_input('S2 pandas query', key = 'subset_s2_query')
     st.text_input('Landsat pandas query', key = 'subset_landsat_query')
