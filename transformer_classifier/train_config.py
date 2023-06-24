@@ -8,6 +8,17 @@ norms_path = "data/model_data_norms.pt"
 output_dir_path = "./s1_s2_train"
 
 # %%
+# Set the training, validation, and test sets -- 2 options:
+
+# 1. For 80-10-10 splits:
+# train_val_test_ids = None 
+
+# 2. Specify the loc_ids for the training, validation, and test sets as tuple of lists
+train_val_test_ids = (list(range(0,100)), # training set loc_ids
+                      list(range(100,150)), # validation set loc_ids
+                      list(range(100,150))) # test set (can be same or different as validation set)
+
+# %%
 # Number of training epochs
 n_epochs = 50 # of training epochs
 batch_size = 20 # batch size

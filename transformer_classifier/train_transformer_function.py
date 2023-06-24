@@ -50,7 +50,7 @@ if False:
     norms_path = "data/model_data_norms.pt"
     output_dir_path = "./s1_train"
 # %%
-def train_transformer_func(xnn, s1_data_path, s2_data_path, norms_path, labels_path, output_dir_path, n_epochs, batch_size, lr, weight_decay):
+def train_transformer_func(xnn, s1_data_path, s2_data_path, norms_path, labels_path, output_dir_path, n_epochs, batch_size, lr, weight_decay, train_val_test_ids = None):
 
     # %%
     if not os.path.exists(output_dir_path):
@@ -89,8 +89,16 @@ def train_transformer_func(xnn, s1_data_path, s2_data_path, norms_path, labels_p
 
     labels = torch.load(labels_path)
 
-    y_train, y_eval = train_test_split(labels, train_size = 0.8, stratify = labels[:, 1])
-    y_valid, y_test = train_test_split(y_eval, train_size = 0.5, stratify = y_eval[:, 1])
+
+    # If train_val_test_ids is not None, then use it to split labels 
+    # into train, validation, and test sets
+    if train_val_test_ids is not None:
+        y_train = labels[[x in train_val_test_ids[0] for x in labels[:, 0]], :]
+        y_valid = labels[[x in train_val_test_ids[1] for x in labels[:, 0]], :]
+        y_test = labels[[x in train_val_test_ids[2] for x in labels[:, 0]], :]
+    else: # otherwise, use stratified sampling to split labels into train, validation, and test sets
+        y_train, y_eval = train_test_split(labels, train_size = 0.8, stratify = labels[:, 1])
+        y_valid, y_test = train_test_split(y_eval, train_size = 0.5, stratify = y_eval[:, 1])
 
     flog.write(locals(), 'Number of training samples: {y_train.shape[0]}')
     flog.write(locals(), 'Number of validation samples: {y_valid.shape[0]}')
